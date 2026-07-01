@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에임뮤직-미디어-레터 — EAIM</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;
+  --surface:#13131f;
+  --surface2:#1c1c2e;
+  --accent:#7c4dff;
+  --accent2:#ff6b9d;
+  --accent3:#00e5ff;
+  --gold:#ffd54f;
+  --green:#4CAF82;
+  --text:#f0f0ff;
+  --text2:rgba(240,240,255,.5);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;display:flex;align-items:center;justify-content:center}
+
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(90px);opacity:.18;z-index:0}
+.orb1{width:520px;height:520px;top:-120px;left:-120px;background:var(--accent)}
+.orb2{width:420px;height:420px;bottom:-120px;right:-60px;background:var(--accent2)}
+.orb3{width:320px;height:320px;top:35%;left:42%;background:var(--accent3)}
+
+.container{position:relative;z-index:1;max-width:640px;width:100%;padding:32px 20px 60px;text-align:center}
+
+.header-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 16px;border-radius:20px;background:rgba(124,77,255,.15);border:1px solid rgba(124,77,255,.4);font-size:11px;color:var(--accent);letter-spacing:3px;font-weight:700;margin-bottom:20px}
+.header-title{font-family:'Black Han Sans',sans-serif;font-size:clamp(32px,8vw,54px);line-height:1.15;letter-spacing:-1px;background:linear-gradient(135deg,var(--text) 0%,var(--accent) 45%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
+.header-sub{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:40px}
+
+.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+@media(max-width:520px){.nav-grid{grid-template-columns:1fr}}
+.nav-card{background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:28px 20px;text-decoration:none;color:var(--text);transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:10px}
+.nav-card:hover{transform:translateY(-3px);border-color:rgba(124,77,255,.5);box-shadow:0 10px 30px rgba(124,77,255,.2)}
+.nav-card .icon{font-size:38px}
+.nav-card .title{font-size:16px;font-weight:700}
+.nav-card .desc{font-size:12px;color:var(--text2);line-height:1.6}
+.nav-card.green:hover{border-color:rgba(76,175,130,.5);box-shadow:0 10px 30px rgba(76,175,130,.2)}
+
+.session-quick{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:18px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.session-quick label{font-size:12px;color:var(--text2);letter-spacing:1px;white-space:nowrap}
+.session-quick input{flex:1;min-width:140px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.session-quick input:focus{border-color:var(--green)}
+.session-quick button{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:linear-gradient(135deg,var(--green),#2E7D5A);color:#fff}
+
+.footer-tag{margin-top:28px;font-size:11px;color:rgba(255,255,255,.25);letter-spacing:2px}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="container">
+  <div class="header-badge">🎵 EAIM</div>
+  <div class="header-title">에임뮤직-미디어-레터</div>
+  <div class="header-sub">음악을 듣고 · 느끼고 · 그림으로 표현하고 · 이야기로 완성하다<br>학급 코드 하나로 여러 기기의 장면이 한곳에 모여요</div>
+
+  <div class="nav-grid">
+    <a class="nav-card" href="media_picture.html">
+      <div class="icon">🎨</div>
+      <div class="title">미디어픽쳐</div>
+      <div class="desc">음악 감상 → 이미지 생성 · 손그림 스케치 →<br>장면 만들기</div>
+    </a>
+    <a class="nav-card green" href="slideshow.html">
+      <div class="icon">🎬</div>
+      <div class="title">슬라이드쇼</div>
+      <div class="desc">모아진 장면들을<br>영화처럼 감상하기</div>
+    </a>
+  </div>
+
+  <div class="session-quick">
+    <label>학급 코드로 바로 입장</label>
+    <input id="quick-session" placeholder="예: 3-1-바람의빛깔">
+    <button onclick="quickEnter()">미디어픽쳐로 이동</button>
+  </div>
+
+  <div class="footer-tag">Emotion · Artscape · Interactive · Musicalization</div>
+</div>
+
+<script>
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('eaim_session_code');
+  if (saved) document.getElementById('quick-session').value = saved;
+});
+function quickEnter() {
+  const v = document.getElementById('quick-session').value.trim();
+  if (v) localStorage.setItem('eaim_session_code', v);
+  window.location.href = 'media_picture.html';
+}
+</script>
+</body>
+</html>
