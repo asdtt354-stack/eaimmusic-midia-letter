@@ -164,15 +164,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 /* 번역코드표 참고 카드 */
 .code-table{display:flex;flex-direction:column;gap:8px}
-.code-row{display:grid;grid-template-columns:110px 1fr 1fr;gap:10px;background:var(--surface2);border-radius:10px;padding:10px 14px;align-items:center}
+.code-row{display:grid;grid-template-columns:100px 1fr 1fr 1fr;gap:10px;background:var(--surface2);border-radius:10px;padding:10px 14px;align-items:center}
 .code-row.head{background:transparent;padding:0 14px;font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
 .code-elem{font-size:12px;font-weight:700;color:var(--accent3)}
 .code-signal{font-size:12px;color:var(--text)}
 .code-hint{font-size:12px;color:var(--text2)}
+.code-input{width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;transition:border-color .2s}
+.code-input:focus{border-color:var(--accent3)}
+.code-input::placeholder{color:var(--text2)}
+.analyze-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+#btn-analyze-song{display:none}
 @media(max-width:600px){
-  .code-row{grid-template-columns:1fr;gap:2px}
+  .code-row{grid-template-columns:1fr;gap:4px}
   .code-row.head{display:none}
   .code-elem{color:var(--accent3)}
+  .code-row:not(.head){padding:12px 14px}
 }
 
 /* ══ 신문 편집 ══ */
@@ -329,13 +335,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div class="step-desc">음악을 들으며 아래를 참고해서 스타일·색감·분위기를 골라보세요</div>
       </div>
     </div>
+    <div class="analyze-row">
+      <button class="btn btn-primary" id="btn-analyze-song" onclick="analyzeSongForCodeTable()">🤖 이 노래로 분석하기</button>
+      <span style="font-size:11px;color:var(--text2)">음악 파일을 업로드하면 AI가 이 곡을 실제로 듣고 채워줘요 (직접 수정 가능)</span>
+    </div>
     <div class="code-table">
-      <div class="code-row head"><div>음악 요소</div><div>무엇이 들리나요?</div><div>서사 번역 힌트</div></div>
-      <div class="code-row"><div class="code-elem">셈여림</div><div class="code-signal">소리가 커지거나 작아진다</div><div class="code-hint">감정의 강도 — 조용함 ↔ 폭발적임</div></div>
-      <div class="code-row"><div class="code-elem">선율 윤곽</div><div class="code-signal">음이 올라가거나 내려간다</div><div class="code-hint">긴장 고조/이완, 사건의 방향</div></div>
-      <div class="code-row"><div class="code-elem">형식·반복</div><div class="code-signal">같은 부분이 다시 나온다</div><div class="code-hint">회상, 순환하는 이야기 구조</div></div>
-      <div class="code-row"><div class="code-elem">리듬·템포</div><div class="code-signal">빠르기가 바뀐다</div><div class="code-hint">안정 ↔ 혼란·긴박함</div></div>
-      <div class="code-row"><div class="code-elem">음색·악기</div><div class="code-signal">어떤 악기·목소리가 쓰이는가</div><div class="code-hint">정체성, 장면의 배경·분위기</div></div>
+      <div class="code-row head"><div>음악 요소</div><div>무엇이 들리나요?</div><div>서사 번역 힌트</div><div>내가 들은 것 ✏️</div></div>
+      <div class="code-row"><div class="code-elem">셈여림</div><div class="code-signal">소리가 커지거나 작아진다</div><div class="code-hint">감정의 강도 — 조용함 ↔ 폭발적임</div><input class="code-input" id="obs-dynamics" placeholder="예: 중간부터 점점 커짐"></div>
+      <div class="code-row"><div class="code-elem">선율 윤곽</div><div class="code-signal">음이 올라가거나 내려간다</div><div class="code-hint">긴장 고조/이완, 사건의 방향</div><input class="code-input" id="obs-melody" placeholder="예: 후렴에서 계속 올라감"></div>
+      <div class="code-row"><div class="code-elem">형식·반복</div><div class="code-signal">같은 부분이 다시 나온다</div><div class="code-hint">회상, 순환하는 이야기 구조</div><input class="code-input" id="obs-form" placeholder="예: 도입부가 끝에 다시 나옴"></div>
+      <div class="code-row"><div class="code-elem">리듬·템포</div><div class="code-signal">빠르기가 바뀐다</div><div class="code-hint">안정 ↔ 혼란·긴박함</div><input class="code-input" id="obs-rhythm" placeholder="예: 중간에 빨라짐"></div>
+      <div class="code-row"><div class="code-elem">음색·악기</div><div class="code-signal">어떤 악기·목소리가 쓰이는가</div><div class="code-hint">정체성, 장면의 배경·분위기</div><input class="code-input" id="obs-timbre" placeholder="예: 가야금 소리가 두드러짐"></div>
     </div>
   </div>
 
@@ -830,6 +840,7 @@ function switchTab(tab) {
   document.getElementById('panel-file').style.display = tab === 'file' ? 'block' : 'none';
   document.getElementById('tab-youtube').className = tab === 'youtube' ? 'btn btn-primary' : 'btn btn-secondary';
   document.getElementById('tab-file').className = tab === 'file' ? 'btn btn-primary' : 'btn btn-secondary';
+  updateAnalyzeButtonVisibility(tab === 'file' && !!currentAudioBase64);
 }
 
 // ===== 유튜브 임베드 =====
@@ -859,6 +870,8 @@ function extractYoutubeId(url) {
 }
 
 // ===== 파일 업로드 =====
+let currentAudioBase64 = null, currentAudioMime = null;
+
 function loadMusicFile(e) {
   const file = e.target.files[0]; if (!file) return;
   const url = URL.createObjectURL(file);
@@ -868,6 +881,57 @@ function loadMusicFile(e) {
   document.getElementById('file-name').textContent = '🎵 ' + file.name;
   audio.play();
   showToast('🎵 ' + file.name + ' 재생 중!');
+
+  // Gemini 분석용으로 base64도 함께 저장
+  currentAudioMime = file.type || 'audio/mpeg';
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    currentAudioBase64 = dataUrl.split(',')[1];
+    updateAnalyzeButtonVisibility(true);
+  };
+  reader.onerror = () => { currentAudioBase64 = null; };
+  reader.readAsDataURL(file);
+}
+
+function updateAnalyzeButtonVisibility(show) {
+  const btn = document.getElementById('btn-analyze-song');
+  if (btn) btn.style.display = show ? 'inline-flex' : 'none';
+}
+
+// ===== 🤖 업로드한 곡으로 번역코드표 자동 분석 =====
+async function analyzeSongForCodeTable() {
+  if (!GEMINI_KEY) { showToast('⚠️ API 키를 먼저 입력해주세요'); return; }
+  if (!currentAudioBase64) { showToast('⚠️ 먼저 음악 파일을 업로드해주세요'); return; }
+
+  showLoading('🤖 음악을 듣고 분석하고 있어요...');
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { inlineData: { mimeType: currentAudioMime, data: currentAudioBase64 } },
+          { text: `이 음악을 실제로 듣고 아래 5가지 항목을 분석해서 JSON으로만 답해주세요. 각 항목은 이 곡에서 실제로 들리는 구체적인 특징을 한국어로 1문장씩, 중학생이 이해하기 쉽게 써주세요.
+{"dynamics":"셈여림 변화 설명","melody":"선율 윤곽(오르내림) 설명","form":"반복되거나 구조가 바뀌는 지점 설명","rhythm":"리듬/템포 변화 설명","timbre":"어떤 악기·음색이 쓰이는지 설명"}
+JSON 외의 다른 텍스트는 출력하지 마세요.` }
+        ]}],
+        generationConfig: { temperature: 0.4 }
+      })
+    });
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    const obs = JSON.parse(clean);
+    ['dynamics','melody','form','rhythm','timbre'].forEach(k => {
+      const el = document.getElementById('obs-' + k);
+      if (el && obs[k]) el.value = obs[k];
+    });
+    showToast('✅ 분석 완료! 내용은 직접 고쳐도 돼요');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 분석 실패 — 다시 시도하거나 직접 적어주세요');
+  }
+  hideLoading();
 }
 
 // ===== 번역 =====
@@ -999,12 +1063,16 @@ async function addSceneToShow() {
 
   const title = document.getElementById('scene-title').value.trim() || `장면 ${collectedScenes.length + 1}`;
   const characters = document.getElementById('scene-characters').value.trim();
+  const analysis = ['dynamics','melody','form','rhythm','timbre']
+    .map(k => document.getElementById('obs-' + k)?.value.trim())
+    .filter(Boolean).join(' / ');
 
   const scene = {
     title,
     imageUrl: finalVisual,
     visualType: sceneVisualChoice,
     characters,
+    analysis,
     emotion: currentEmotionLabel(),
     musicMood: currentMusicMoodLabel(),
   };
@@ -1133,7 +1201,7 @@ function buildNpGrid() {
       <input class="np-input np-article-title" value="장면 ${i+1} — ${s.title||''}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
       <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
       <div class="np-caption">
-        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:vertical;outline:none;color:#333;line-height:1.6" rows="3">${[s.emotion, s.musicMood].filter(Boolean).join(' · ')}</textarea>
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:vertical;outline:none;color:#333;line-height:1.6" rows="3">${[s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
       </div>
     </div>
   `).join('');
