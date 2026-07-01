@@ -300,6 +300,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
     <!-- 유튜브 탭 -->
     <div id="panel-youtube">
+      <div class="music-input-row" style="margin-bottom:10px">
+        <input class="music-url-input" id="yt-search-query" placeholder="검색어 입력 (예: 재즈 연주곡, 국악 합주)">
+        <button class="btn btn-secondary" onclick="searchYoutube()">🔍 유튜브에서 찾기</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">새 탭에 검색 결과가 열려요. 마음에 드는 영상의 주소를 복사해서 아래에 붙여넣어주세요.</div>
       <div class="music-input-row">
         <input class="music-url-input" id="music-url" placeholder="유튜브 URL 붙여넣기... (예: https://youtu.be/xxx)">
         <button class="btn btn-primary" onclick="loadYoutube()">▶ 재생</button>
@@ -844,6 +849,13 @@ function switchTab(tab) {
 }
 
 // ===== 유튜브 임베드 =====
+function searchYoutube() {
+  const q = document.getElementById('yt-search-query').value.trim();
+  if (!q) { showToast('⚠️ 검색어를 입력해주세요'); return; }
+  window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
+  showToast('🔍 새 탭에서 검색 결과를 확인해주세요');
+}
+
 function loadYoutube() {
   const url = document.getElementById('music-url').value.trim();
   if (!url) { showToast('⚠️ 유튜브 URL을 입력해주세요'); return; }
