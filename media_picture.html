@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미디어픽쳐 — EAIM</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- Firebase (Firestore) — 학급 코드로 여러 기기의 장면을 한곳에 모읍니다 -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#0a0a0f;
+  --surface:#13131f;
+  --surface2:#1c1c2e;
+  --accent:#7c4dff;
+  --accent2:#ff6b9d;
+  --accent3:#00e5ff;
+  --gold:#ffd54f;
+  --text:#f0f0ff;
+  --text2:rgba(240,240,255,.5);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* 배경 오브 */
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:.15;z-index:0}
+.orb1{width:500px;height:500px;top:-100px;left:-100px;background:var(--accent)}
+.orb2{width:400px;height:400px;bottom:-100px;right:-50px;background:var(--accent2)}
+.orb3{width:300px;height:300px;top:40%;left:40%;background:var(--accent3)}
+
+/* 레이아웃 */
+.container{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:32px 20px 80px}
+
+/* 헤더 */
+.header{text-align:center;margin-bottom:48px;padding-top:20px}
+.header-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 16px;border-radius:20px;background:rgba(124,77,255,.15);border:1px solid rgba(124,77,255,.4);font-size:11px;color:var(--accent);letter-spacing:3px;font-weight:700;margin-bottom:16px}
+.header-title{font-family:'Black Han Sans',sans-serif;font-size:clamp(36px,8vw,64px);line-height:1;letter-spacing:-1px;background:linear-gradient(135deg,var(--text) 0%,var(--accent) 50%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.header-sub{font-size:13px;color:var(--text2);letter-spacing:2px}
+
+/* 스텝 카드 */
+.step-card{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:28px;margin-bottom:20px;transition:border-color .3s}
+.step-card:focus-within{border-color:rgba(124,77,255,.4)}
+.step-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.step-title{font-size:16px;font-weight:700;letter-spacing:.5px}
+.step-desc{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* 음악 입력 */
+.music-input-row{display:flex;gap:10px}
+.music-url-input{flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:12px 16px;border-radius:10px;font-size:13px;outline:none;font-family:inherit;transition:border-color .3s}
+.music-url-input:focus{border-color:var(--accent)}
+.music-url-input::placeholder{color:var(--text2)}
+.btn{padding:11px 20px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;transition:all .2s;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#5c35cc);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(124,77,255,.4)}
+.btn-secondary{background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text2)}
+.btn-secondary:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+
+/* 음악 플레이어 */
+#music-player{display:none;margin-top:14px;background:var(--surface2);border-radius:12px;padding:14px 18px}
+.player-title{font-size:12px;color:var(--text2);margin-bottom:8px;letter-spacing:1px}
+#music-player audio{width:100%;height:32px;outline:none}
+#music-player audio::-webkit-media-controls-panel{background:var(--surface2)}
+
+/* 스타일 선택 */
+.style-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.style-chip{padding:12px 8px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:var(--surface2);cursor:pointer;text-align:center;transition:all .2s;user-select:none}
+.style-chip:hover{border-color:rgba(124,77,255,.5);background:rgba(124,77,255,.1)}
+.style-chip.selected{border-color:var(--accent);background:rgba(124,77,255,.2);box-shadow:0 0 16px rgba(124,77,255,.2)}
+.style-chip .emoji{font-size:24px;display:block;margin-bottom:6px}
+.style-chip .label{font-size:11px;font-weight:600;color:var(--text);letter-spacing:.5px}
+.style-chip .sub{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* 색상 선택 */
+.color-grid{display:flex;flex-wrap:wrap;gap:8px}
+.color-chip{width:44px;height:44px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
+.color-chip:hover{transform:scale(1.1)}
+.color-chip.selected{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.color-chip .check{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:16px}
+.color-chip.selected .check{display:flex}
+
+/* 분위기 태그 */
+.mood-grid{display:flex;flex-wrap:wrap;gap:8px}
+.mood-tag{padding:7px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,.1);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;user-select:none}
+.mood-tag:hover{border-color:rgba(255,107,157,.5);color:var(--accent2)}
+.mood-tag.selected{border-color:var(--accent2);background:rgba(255,107,157,.15);color:var(--accent2)}
+
+/* 프롬프트 입력 */
+.prompt-textarea{width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:14px 16px;border-radius:10px;font-size:14px;line-height:1.7;outline:none;font-family:inherit;resize:vertical;min-height:100px;transition:border-color .3s}
+.prompt-textarea:focus{border-color:var(--accent)}
+.prompt-textarea::placeholder{color:var(--text2)}
+.translate-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.translated-box{flex:1;margin-right:10px;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--accent3);font-family:monospace;min-height:40px;line-height:1.6;display:none}
+
+/* 생성 버튼 */
+.generate-section{text-align:center;margin:32px 0}
+.btn-generate{padding:16px 48px;border-radius:40px;border:none;cursor:pointer;font-size:16px;font-weight:700;font-family:'Black Han Sans',sans-serif;letter-spacing:2px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;transition:all .3s;position:relative;overflow:hidden}
+.btn-generate:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,77,255,.5)}
+.btn-generate:disabled{opacity:.4;cursor:default;transform:none}
+.btn-generate .shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);transform:translateX(-100%)}
+.btn-generate:not(:disabled):hover .shine{animation:shine .6s ease}
+@keyframes shine{to{transform:translateX(100%)}}
+
+/* 결과 */
+#result-section{display:none}
+.result-card{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.result-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.result-img-placeholder{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:40px}
+.result-body{padding:20px}
+.result-prompt-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+.result-prompt-text{font-size:13px;color:var(--accent3);font-family:monospace;line-height:1.6;background:rgba(0,229,255,.05);padding:10px 14px;border-radius:8px;border:1px solid rgba(0,229,255,.15)}
+.result-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+
+/* 다운로드 가이드 */
+.capcut-guide{background:linear-gradient(135deg,rgba(255,107,157,.08),rgba(124,77,255,.08));border:1px solid rgba(255,107,157,.2);border-radius:var(--radius);padding:24px;margin-top:20px}
+.capcut-title{font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.guide-steps{display:flex;flex-direction:column;gap:10px}
+.guide-step{display:flex;align-items:flex-start;gap:12px;font-size:13px;color:var(--text2);line-height:1.6}
+.guide-step-num{width:22px;height:22px;border-radius:50%;background:rgba(255,107,157,.2);border:1px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent2);flex-shrink:0;margin-top:1px}
+
+/* API 설정 */
+.api-bar{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.api-bar label{font-size:12px;color:var(--text2);letter-spacing:1px;white-space:nowrap}
+.api-key-input{flex:1;min-width:200px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px;font-family:monospace;outline:none}
+.api-key-input:focus{border-color:var(--accent)}
+.api-dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0}
+.api-dot.active{background:#4caf50;box-shadow:0 0 8px #4caf50}
+
+/* 로딩 */
+.loading-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(10,10,15,.9);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-overlay.show{display:flex}
+.loading-ring{width:60px;height:60px;border:3px solid rgba(124,77,255,.2);border-top:3px solid var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+.loading-text{font-size:14px;color:var(--text2);letter-spacing:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 토스트 */
+#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid rgba(255,255,255,.1);padding:10px 22px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;z-index:200;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  .style-grid{grid-template-columns:repeat(3,1fr)}
+  .music-input-row{flex-direction:column}
+}
+
+/* 학급 코드(세션) 바 */
+.session-bar{background:linear-gradient(135deg,rgba(76,175,130,.1),rgba(124,77,255,.08));border:1px solid rgba(76,175,130,.3);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.session-bar label{font-size:12px;color:var(--text2);letter-spacing:1px;white-space:nowrap}
+.session-key-input{flex:1;min-width:160px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.session-key-input:focus{border-color:#4CAF82}
+.session-dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0}
+.session-dot.active{background:#4CAF82;box-shadow:0 0 8px #4CAF82}
+
+/* 스케치 캔버스 */
+.sketch-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.sketch-color{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0}
+.sketch-color.active{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.sketch-size{width:100px}
+#sketch-canvas{background:#fff;border-radius:12px;width:100%;aspect-ratio:16/9;cursor:crosshair;touch-action:none;display:block}
+.sketch-choice-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.sketch-choice{flex:1;min-width:140px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);background:var(--surface2);cursor:pointer;text-align:center;font-size:12px;font-weight:600;color:var(--text2);transition:all .2s}
+.sketch-choice.selected{border-color:#4CAF82;background:rgba(76,175,130,.15);color:#4CAF82}
+
+/* ══ 신문 편집 ══ */
+#newspaper-modal{display:none;position:fixed;inset:0;background:#f5f0e8;z-index:9999;overflow-y:auto}
+#newspaper-modal.open{display:block}
+.np-toolbar{position:sticky;top:0;background:#1a1a1a;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:10;flex-wrap:wrap}
+.np-toolbar button{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:bold;font-family:inherit}
+.np-print-btn{background:#C9A84C;color:#1a1a1a}
+.np-close-btn{background:rgba(255,255,255,.15);color:#fff}
+.np-paper{max-width:800px;margin:20px auto;background:#fff;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,.15);font-family:'맑은 고딕','Malgun Gothic',serif}
+.np-masthead{text-align:center;border-bottom:4px solid #1a1a1a;border-top:4px solid #1a1a1a;padding:12px 0;margin-bottom:16px}
+.np-name{font-size:36px;font-weight:900;letter-spacing:2px;color:#1a1a1a;font-family:'맑은 고딕',serif}
+.np-meta{font-size:11px;color:#555;margin-top:4px;display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a}
+.np-headline{font-size:22px;font-weight:900;text-align:center;margin:12px 0 8px;line-height:1.3;color:#1a1a1a}
+.np-grid{display:grid;gap:16px;margin-top:12px}
+.np-grid.col1{grid-template-columns:1fr}
+.np-grid.col2{grid-template-columns:1fr 1fr}
+.np-grid.col3{grid-template-columns:1fr 1fr 1fr}
+.np-article{break-inside:avoid}
+.np-article img{width:100%;border:1px solid #ddd;display:block}
+.np-caption{font-size:11px;color:#333;margin-top:6px;line-height:1.6;border-left:3px solid #C9A84C;padding-left:8px}
+.np-article-title{font-size:14px;font-weight:900;margin-bottom:4px;color:#1a1a1a}
+.np-input{width:100%;border:none;border-bottom:1px dashed #aaa;background:transparent;font-size:inherit;font-family:inherit;outline:none;color:#1a1a1a;padding:2px}
+
+/* ══ 음악 편지 ══ */
+#letter-modal{display:none;position:fixed;inset:0;background:#f9f0e0;z-index:9999;overflow-y:auto}
+#letter-modal.open{display:block}
+.letter-toolbar{position:sticky;top:0;background:#8B4513;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:10;flex-wrap:wrap}
+.letter-toolbar button{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:bold;font-family:inherit}
+.letter-paper{max-width:680px;margin:20px auto;background:#fffdf5;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.15);border:1px solid #e8d5a3;position:relative;font-family:'맑은 고딕',serif;line-height:2}
+.letter-date{text-align:right;font-size:13px;color:#8B4513;margin-bottom:20px}
+.letter-to{font-size:15px;font-weight:bold;color:#333;margin-bottom:20px}
+.letter-music-box{background:#fff8e7;border:1px solid #e8d5a3;border-radius:8px;padding:12px 16px;margin:16px 0;display:flex;gap:12px;align-items:center}
+.letter-music-img{width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+.letter-body{min-height:200px;font-size:15px;color:#333;line-height:2.2}
+.letter-from{text-align:right;margin-top:30px;font-size:14px;color:#555}
+.letter-input{width:100%;border:none;border-bottom:1px dashed #c8a050;background:transparent;font-family:inherit;font-size:inherit;outline:none;color:#333;padding:2px;line-height:2}
+.letter-textarea{width:100%;border:none;background:transparent;font-family:inherit;font-size:15px;outline:none;color:#333;resize:vertical;line-height:2.2;min-height:180px}
+.letter-scene-select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;font-family:inherit}
+
+/* ══ 음악 인터뷰 ══ */
+#interview-modal{display:none;position:fixed;inset:0;background:#1a1a2e;z-index:9999;overflow-y:auto}
+#interview-modal.open{display:block}
+.interview-toolbar{position:sticky;top:0;background:#0f0f1a;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:10;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.1)}
+.interview-toolbar button{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:bold;font-family:inherit}
+.interview-paper{max-width:720px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.interview-header{background:linear-gradient(135deg,#1a1a2e,#7C4DFF);padding:24px;color:#fff;text-align:center}
+.interview-title{font-size:22px;font-weight:900;letter-spacing:1px}
+.interview-subtitle{font-size:12px;opacity:.7;margin-top:4px}
+.interview-music{display:flex;gap:16px;align-items:center;background:rgba(255,255,255,.1);border-radius:8px;padding:12px;margin-top:16px}
+.interview-music-img{width:70px;height:70px;object-fit:cover;border-radius:6px}
+.qa-section{padding:24px}
+.qa-item{margin-bottom:24px;border-left:3px solid #7C4DFF;padding-left:16px}
+.qa-q{font-size:13px;font-weight:900;color:#7C4DFF;margin-bottom:8px;letter-spacing:.5px}
+.qa-textarea{width:100%;border:none;border-bottom:1px dashed #ccc;background:transparent;font-family:inherit;font-size:14px;outline:none;color:#333;resize:vertical;line-height:1.8;min-height:60px;padding:4px 0}
+.interview-signature{padding:16px 24px;background:#f8f8f8;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#888}
+
+@media print{
+  #newspaper-modal .np-toolbar,#letter-modal .letter-toolbar,#interview-modal .interview-toolbar{display:none!important}
+  #newspaper-modal,#letter-modal,#interview-modal{position:absolute}
+  .np-paper{box-shadow:none;margin:0;padding:16px}
+  body>*:not(#newspaper-modal):not(#letter-modal):not(#interview-modal){display:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-ring"></div>
+  <div class="loading-text" id="loading-text">이미지 생성 중...</div>
+</div>
+
+<div id="toast"></div>
+
+<div class="container">
+
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="header-badge">🎵 EAIM · Musical Maker</div>
+    <div class="header-title">미디어픽쳐</div>
+    <div class="header-sub">음악을 듣고 · 느끼고 · 그림으로 표현하다</div>
+  </div>
+
+  <!-- 학급 코드 (Firebase 세션) -->
+  <div class="session-bar">
+    <div class="session-dot" id="session-dot"></div>
+    <label>학급 코드</label>
+    <input class="session-key-input" id="session-code" placeholder="예: 3-1-바람의빛깔 (같은 코드를 쓰는 사람끼리 장면이 모여요)">
+    <button class="btn btn-secondary" onclick="saveSessionCode()">입장</button>
+  </div>
+
+  <!-- API 설정 -->
+  <div class="api-bar">
+    <div class="api-dot" id="api-dot"></div>
+    <label>GEMINI API KEY</label>
+    <input class="api-key-input" id="api-key" type="password" placeholder="AIza... (대문에서 입력했으면 자동으로 불러와요)">
+    <button class="btn btn-secondary" onclick="saveApiKey()">저장</button>
+  </div>
+
+  <!-- STEP 1: 음악 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">1</div>
+      <div>
+        <div class="step-title">🎵 음악 감상</div>
+        <div class="step-desc">음악 파일을 업로드하거나 URL을 입력하세요</div>
+      </div>
+    </div>
+    <!-- 탭 선택 -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-primary" id="tab-youtube" onclick="switchTab('youtube')">▶ 유튜브</button>
+      <button class="btn btn-secondary" id="tab-file" onclick="switchTab('file')">📂 파일 업로드</button>
+    </div>
+
+    <!-- 유튜브 탭 -->
+    <div id="panel-youtube">
+      <div class="music-input-row">
+        <input class="music-url-input" id="music-url" placeholder="유튜브 URL 붙여넣기... (예: https://youtu.be/xxx)">
+        <button class="btn btn-primary" onclick="loadYoutube()">▶ 재생</button>
+      </div>
+      <div id="youtube-player" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;aspect-ratio:16/9">
+        <iframe id="yt-iframe" width="100%" height="100%" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="display:block"></iframe>
+      </div>
+    </div>
+
+    <!-- 파일 탭 -->
+    <div id="panel-file" style="display:none">
+      <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:28px;border:2px dashed rgba(255,255,255,.15);border-radius:12px;cursor:pointer;transition:border-color .3s" onmouseover="this.style.borderColor='rgba(124,77,255,.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)'">
+        <span style="font-size:28px">📂</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">음악 파일 업로드</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">MP3, WAV, OGG 등 지원</div>
+        </div>
+        <input type="file" id="music-file" accept="audio/*" style="display:none" onchange="loadMusicFile(event)">
+      </label>
+      <div id="music-player" style="display:none;margin-top:14px;background:var(--surface2);border-radius:12px;padding:14px 18px">
+        <div class="player-title" id="file-name">🎵 재생 중</div>
+        <audio id="audio-el" controls style="width:100%;margin-top:8px"></audio>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 스타일 선택 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,107,157,.15);border:1.5px solid var(--accent2);color:var(--accent2)">2</div>
+      <div>
+        <div class="step-title">🎨 그림 스타일 선택</div>
+        <div class="step-desc">음악의 느낌에 맞는 스타일을 골라보세요</div>
+      </div>
+    </div>
+    <div class="style-grid" id="style-grid"></div>
+  </div>
+
+  <!-- STEP 3: 색상 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(0,229,255,.1);border:1.5px solid var(--accent3);color:var(--accent3)">3</div>
+      <div>
+        <div class="step-title">🌈 색감 선택</div>
+        <div class="step-desc">음악의 색깔을 골라보세요 (여러 개 가능)</div>
+      </div>
+    </div>
+    <div class="color-grid" id="color-grid"></div>
+  </div>
+
+  <!-- STEP 4: 분위기 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,213,79,.1);border:1.5px solid var(--gold);color:var(--gold)">4</div>
+      <div>
+        <div class="step-title">💭 분위기 선택</div>
+        <div class="step-desc">음악에서 느껴지는 감정을 골라보세요 (여러 개 가능)</div>
+      </div>
+    </div>
+    <div class="mood-grid" id="mood-grid"></div>
+  </div>
+
+  <!-- STEP 5: 프롬프트 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">5</div>
+      <div>
+        <div class="step-title">✏️ 자유롭게 표현하기</div>
+        <div class="step-desc">음악을 듣고 떠오르는 장면을 한글로 적어보세요</div>
+      </div>
+    </div>
+    <textarea class="prompt-textarea" id="prompt-kr" placeholder="예: 가을 숲속에서 낙엽이 지고 있어. 혼자 걷는 느낌이야. 따뜻하면서도 조금 쓸쓸해..."></textarea>
+    <div class="translate-row">
+      <div class="translated-box" id="translated-box"></div>
+      <button class="btn btn-secondary" onclick="translatePrompt()" id="btn-translate">🌐 영어로 번역</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: 장면 정보 (신규) -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">6</div>
+      <div>
+        <div class="step-title">🎬 장면 정보 (슬라이드쇼용)</div>
+        <div class="step-desc">이 장면을 슬라이드쇼에 넣을 때 쓰일 정보예요</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input class="music-url-input" id="scene-title" placeholder="장면 제목 (예: 봄날의 학교 교정)">
+      <input class="music-url-input" id="scene-song" placeholder="음악(곡) 제목">
+      <input class="music-url-input" id="scene-characters" placeholder="등장인물 (쉼표로 구분, 예: 민준, 서아)">
+      <textarea class="prompt-textarea" id="scene-lyrics" style="min-height:60px" placeholder="가사 / 대사 (줄바꿈으로 구분)"></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 7: 캐릭터·장면 스케치 (활동지 연동) -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">7</div>
+      <div>
+        <div class="step-title">✍️ 캐릭터·장면 스케치</div>
+        <div class="step-desc">활동지의 "캐릭터·장면 스케치" 칸을 여기서 직접 그려도 돼요 (선택)</div>
+      </div>
+    </div>
+    <div class="sketch-toolbar">
+      <div class="sketch-color active" style="background:#1a1a2e" onclick="selectSketchColor('#1a1a2e',this)"></div>
+      <div class="sketch-color" style="background:#e94560" onclick="selectSketchColor('#e94560',this)"></div>
+      <div class="sketch-color" style="background:#4CAF82" onclick="selectSketchColor('#4CAF82',this)"></div>
+      <div class="sketch-color" style="background:#5DADE2" onclick="selectSketchColor('#5DADE2',this)"></div>
+      <div class="sketch-color" style="background:#ffd54f" onclick="selectSketchColor('#ffd54f',this)"></div>
+      <div class="sketch-color" style="background:#C778DD" onclick="selectSketchColor('#C778DD',this)"></div>
+      <input type="range" class="sketch-size" id="sketch-size" min="1" max="18" value="4">
+      <button class="btn btn-secondary" onclick="setSketchEraser()">🧹 지우개</button>
+      <button class="btn btn-secondary" onclick="clearSketch()">🗑 전체 지우기</button>
+    </div>
+    <canvas id="sketch-canvas" width="960" height="540"></canvas>
+    <div class="sketch-choice-row">
+      <div class="sketch-choice selected" id="choice-ai" onclick="chooseSceneVisual('ai')">🎨 AI 생성 이미지 사용</div>
+      <div class="sketch-choice" id="choice-sketch" onclick="chooseSceneVisual('sketch')">✍️ 내 손그림 사용</div>
+    </div>
+  </div>
+
+  <!-- 생성 버튼 -->
+  <div class="generate-section">
+    <button class="btn-generate" onclick="generateImage()" id="btn-generate">
+      <span class="shine"></span>
+      ✨ 이미지 생성하기
+    </button>
+  </div>
+
+  <!-- 결과 -->
+  <div id="result-section">
+    <div class="result-card">
+      <img class="result-img" id="result-img" alt="생성된 이미지" style="display:none">
+      <div class="result-img-placeholder" id="result-placeholder" style="display:none">🎨</div>
+      <div class="result-body">
+        <div class="result-prompt-label">사용된 프롬프트</div>
+        <div class="result-prompt-text" id="result-prompt-text"></div>
+        <div class="result-actions">
+          <button class="btn btn-primary" onclick="downloadImage()">⬇ 이미지 다운로드</button>
+          <button class="btn btn-secondary" onclick="generateImage()">🔄 다시 생성</button>
+          <button class="btn btn-primary" onclick="addSceneToShow()" style="background:#4CAF82;border-color:#4CAF82">➕ 슬라이드쇼에 장면 추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모아진 장면 목록 -->
+    <div class="step-card" id="scene-list-card" style="display:none">
+      <div class="step-header">
+        <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">🎬</div>
+        <div>
+          <div class="step-title">모아진 장면 (<span id="scene-count">0</span>개)</div>
+          <div class="step-desc">순서를 확인하고 슬라이드쇼로 넘어가세요</div>
+        </div>
+      </div>
+      <div id="scene-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="goToSlideshow()" style="background:linear-gradient(135deg,#4CAF82,#2E7D5A)">🎬 슬라이드쇼로 이동</button>
+        <button class="btn btn-primary" onclick="openNewspaper()" style="background:#C9A84C;color:#1a1a1a">📰 음악 신문 만들기</button>
+        <button class="btn btn-primary" onclick="openLetter()" style="background:#E94560">💌 음악 편지 쓰기</button>
+        <button class="btn btn-primary" onclick="openInterview()" style="background:#7C4DFF">🎤 음악 인터뷰</button>
+        <button class="btn btn-secondary" onclick="clearScenes()">🗑 전체 초기화</button>
+      </div>
+    </div>
+
+    <!-- CapCut 가이드 -->
+    <div class="capcut-guide">
+      <div class="capcut-title">🎬 CapCut으로 영상 만들기</div>
+      <div class="guide-steps">
+        <div class="guide-step"><div class="guide-step-num">1</div>위 버튼으로 이미지를 다운로드하세요</div>
+        <div class="guide-step"><div class="guide-step-num">2</div>음악 파일도 저장해두세요</div>
+        <div class="guide-step"><div class="guide-step-num">3</div>CapCut 새 프로젝트 → 이미지 + 음악 불러오기</div>
+        <div class="guide-step"><div class="guide-step-num">4</div>효과음, 전환효과, 텍스트를 추가하세요</div>
+        <div class="guide-step"><div class="guide-step-num">5</div>완성! 🎉</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 신문 편집 모달 -->
+<div id="newspaper-modal">
+  <div class="np-toolbar">
+    <button class="np-close-btn" onclick="closeModal('newspaper-modal')">✕ 닫기</button>
+    <span style="flex:1;font-size:14px;font-weight:bold">📰 음악 감상 신문 편집</span>
+    <select id="np-layout" onchange="updateNpLayout()" style="padding:6px;border-radius:6px;border:none;font-family:inherit;font-size:12px">
+      <option value="col1">1단 레이아웃</option>
+      <option value="col2" selected>2단 레이아웃</option>
+      <option value="col3">3단 레이아웃</option>
+    </select>
+    <button class="np-print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+  </div>
+  <div class="np-paper" id="np-paper">
+    <div class="np-masthead">
+      <input class="np-input np-name" id="np-title" value="음악 감상 신문" style="font-size:36px;font-weight:900;letter-spacing:2px;text-align:center;width:100%">
+      <div class="np-meta">
+        <input class="np-input" id="np-school" placeholder="학교명" style="width:30%;font-size:11px">
+        <input class="np-input" id="np-date" style="width:30%;font-size:11px;text-align:center">
+        <input class="np-input" id="np-grade" placeholder="학년 반 이름" style="width:30%;font-size:11px;text-align:right">
+      </div>
+    </div>
+    <input class="np-input np-headline" id="np-headline" placeholder="신문 헤드라인을 입력하세요" style="font-size:22px;font-weight:900;text-align:center;width:100%;margin:12px 0 8px">
+    <div class="np-grid col2" id="np-grid"></div>
+  </div>
+</div>
+
+<!-- 음악 편지 모달 -->
+<div id="letter-modal">
+  <div class="letter-toolbar">
+    <button onclick="closeModal('letter-modal')" style="background:rgba(255,255,255,.2);color:#fff">✕ 닫기</button>
+    <span style="flex:1;font-size:14px;font-weight:bold">💌 음악 편지</span>
+    <select class="letter-scene-select" id="letter-scene-select" onchange="onLetterSceneChange()"></select>
+    <button onclick="window.print()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
+  </div>
+  <div class="letter-paper" id="letter-paper">
+    <div class="letter-date">
+      <input class="letter-input" id="letter-date" style="width:200px;text-align:right;font-size:13px;color:#8B4513">
+    </div>
+    <div class="letter-to">
+      <input class="letter-input" id="letter-to" placeholder="받는 사람 (예: 사랑하는 친구에게)" style="font-size:15px;font-weight:bold">
+    </div>
+    <div class="letter-music-box">
+      <img id="letter-img" class="letter-music-img" src="" alt="감상 이미지">
+      <div>
+        <div style="font-size:12px;color:#888;margin-bottom:4px">🎵 이 음악을 들으며...</div>
+        <input class="letter-input" id="letter-song" placeholder="음악 제목 / 아티스트" style="font-size:13px;font-weight:bold;color:#8B4513">
+      </div>
+    </div>
+    <div class="letter-body">
+      <textarea class="letter-textarea" id="letter-body" placeholder="음악을 듣고 느낀 감정을 편지로 써보세요...&#10;&#10;이 음악을 들었을 때 나는...&#10;&#10;네가 이 음악을 듣는다면...&#10;&#10;음악이 나에게 전해주는 메시지는..."></textarea>
+    </div>
+    <div class="letter-from">
+      <div style="font-size:12px;color:#888;margin-bottom:4px">보내는 사람</div>
+      <input class="letter-input" id="letter-from" placeholder="이름을 적어요" style="text-align:right;font-size:14px;font-weight:bold;width:200px">
+    </div>
+  </div>
+</div>
+
+<!-- 음악 인터뷰 모달 -->
+<div id="interview-modal">
+  <div class="interview-toolbar">
+    <button onclick="closeModal('interview-modal')" style="background:rgba(255,255,255,.1);color:#fff">✕ 닫기</button>
+    <span style="flex:1;font-size:14px;font-weight:bold;color:#fff">🎤 음악 인터뷰</span>
+    <button onclick="generateInterviewQ()" style="background:#7C4DFF;color:#fff">✨ AI 질문 생성</button>
+    <button onclick="window.print()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
+  </div>
+  <div class="interview-paper" id="interview-paper">
+    <div class="interview-header">
+      <div class="interview-title">🎤 MUSIC INTERVIEW</div>
+      <input style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;text-align:center;width:100%;outline:none;margin-top:6px;font-family:inherit" id="interview-subtitle" placeholder="음악 감상 인터뷰 — 학교명 / 학년 반 이름">
+      <div class="interview-music" id="interview-music-box">
+        <img id="interview-img" class="interview-music-img" src="" alt="">
+        <div style="text-align:left">
+          <div style="font-size:11px;opacity:.7;margin-bottom:4px">🎵 오늘의 음악</div>
+          <input style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.3);color:#fff;font-size:14px;font-weight:bold;outline:none;font-family:inherit;width:200px" id="interview-song" placeholder="음악 제목 / 아티스트">
+        </div>
+      </div>
+    </div>
+    <div class="qa-section" id="qa-section"></div>
+    <div class="interview-signature">
+      <span>EAIM 음악 감상 인터뷰</span>
+      <input style="border:none;border-bottom:1px dashed #ccc;background:transparent;font-family:inherit;font-size:12px;outline:none;color:#555;text-align:right;width:150px" id="interview-date" placeholder="날짜">
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===== 데이터 =====
+const STYLES = [
+  {id:'webtoon', emoji:'📱', label:'웹툰', sub:'만화체', prompt:'webtoon style, Korean manhwa, clean line art, vibrant colors'},
+  {id:'ghibli', emoji:'🌸', label:'지브리', sub:'애니메이션', prompt:'Studio Ghibli style, soft watercolor animation, warm lighting'},
+  {id:'vangogh', emoji:'🎨', label:'인상주의', sub:'고흐풍', prompt:'Van Gogh style, post-impressionist, thick brushstrokes, swirling colors'},
+  {id:'watercolor', emoji:'💧', label:'수채화', sub:'따뜻한', prompt:'delicate watercolor painting, soft edges, transparent layers'},
+  {id:'anime', emoji:'⭐', label:'애니메이션', sub:'일본풍', prompt:'anime style, detailed illustration, dramatic lighting'},
+  {id:'realistic', emoji:'📸', label:'실사영화', sub:'시네마틱', prompt:'cinematic photography, dramatic lighting, photorealistic'},
+  {id:'fantasy', emoji:'🔮', label:'판타지', sub:'동화풍', prompt:'fantasy illustration, magical atmosphere, ethereal glow'},
+  {id:'pixel', emoji:'👾', label:'픽셀아트', sub:'레트로', prompt:'pixel art style, retro game aesthetic, 16-bit'},
+  {id:'ink', emoji:'🖋', label:'수묵화', sub:'동양화풍', prompt:'ink wash painting, East Asian brush art, minimalist'},
+];
+
+const COLORS = [
+  {color:'#FF6B6B', label:'빨강', prompt:'red tones, passionate'},
+  {color:'#FF9F43', label:'주황', prompt:'orange warmth, energetic'},
+  {color:'#FFD700', label:'노랑', prompt:'golden yellow, bright'},
+  {color:'#6BCB77', label:'초록', prompt:'green nature, fresh'},
+  {color:'#4D96FF', label:'파랑', prompt:'blue calm, serene'},
+  {color:'#9B59B6', label:'보라', prompt:'purple mystical, deep'},
+  {color:'#FF6B9D', label:'분홍', prompt:'pink soft, romantic'},
+  {color:'#00E5FF', label:'하늘', prompt:'sky blue, airy'},
+  {color:'#A0522D', label:'갈색', prompt:'warm brown, earthy'},
+  {color:'#708090', label:'회색', prompt:'gray melancholic, muted'},
+  {color:'#1a1a2e', label:'검정', prompt:'dark night, mysterious'},
+  {color:'#FFFACD', label:'흰색', prompt:'white pure, minimal'},
+];
+
+const MOODS = [
+  {id:'happy', label:'🌟 신나는', prompt:'joyful, energetic, bright', emotionLabel:'설렘'},
+  {id:'sad', label:'🌧 슬픈', prompt:'melancholic, sorrowful, lonely', emotionLabel:'슬픔'},
+  {id:'calm', label:'🌊 평온한', prompt:'peaceful, tranquil, serene', emotionLabel:'고요함'},
+  {id:'exciting', label:'⚡ 웅장한', prompt:'epic, grand, powerful', emotionLabel:'성취'},
+  {id:'romantic', label:'💕 설레는', prompt:'romantic, dreamy, tender', emotionLabel:'설렘'},
+  {id:'dark', label:'🌑 어두운', prompt:'dark, mysterious, ominous', emotionLabel:'긴장'},
+  {id:'nostalgic', label:'🍂 그리운', prompt:'nostalgic, bittersweet, reminiscent', emotionLabel:'감동'},
+  {id:'hopeful', label:'🌅 희망찬', prompt:'hopeful, inspiring, uplifting', emotionLabel:'희망'},
+  {id:'lonely', label:'🌙 외로운', prompt:'lonely, isolated, contemplative', emotionLabel:'슬픔'},
+  {id:'tense', label:'🔥 긴장된', prompt:'tense, dramatic, intense', emotionLabel:'긴장'},
+];
+
+let selectedStyle = null;
+let selectedColors = [];
+let selectedMoods = [];
+let GEMINI_KEY = '';
+let generatedImageUrl = null;
+let collectedScenes = []; // 슬라이드쇼로 넘길 장면 목록
+let sketchDataUrl = null;
+let sceneVisualChoice = 'ai'; // 'ai' | 'sketch'
+
+// ══════════════════════════
+// 🔥 Firebase 설정
+// ══════════════════════════
+// 아래 값을 선생님의 Firebase 프로젝트 설정으로 바꿔주세요.
+// (기존 EAIM 뮤지컬 플랫폼에서 쓰시던 설정을 그대로 재사용하셔도 됩니다)
+// Firebase 콘솔(console.firebase.google.com) → 프로젝트 설정 → 내 앱 → SDK 설정에서 복사
+const firebaseConfig = {
+  apiKey: "여기에_API_KEY",
+  authDomain: "여기에_PROJECT_ID.firebaseapp.com",
+  projectId: "여기에_PROJECT_ID",
+  storageBucket: "여기에_PROJECT_ID.appspot.com",
+  messagingSenderId: "여기에_SENDER_ID",
+  appId: "여기에_APP_ID"
+};
+let db = null;
+let firebaseReady = false;
+try {
+  if (!firebaseConfig.apiKey.startsWith('여기에')) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+  }
+} catch(e) { console.error('Firebase 초기화 실패', e); }
+
+let SESSION_CODE = localStorage.getItem('eaim_session_code') || '';
+let unsubscribeScenes = null;
+
+function saveSessionCode() {
+  const v = document.getElementById('session-code').value.trim();
+  if (!v) { showToast('⚠️ 학급 코드를 입력해주세요'); return; }
+  if (!firebaseReady) { showToast('⚠️ Firebase 설정이 아직 안 되어 있어요 (코드 상단 firebaseConfig 참고)'); return; }
+  SESSION_CODE = v;
+  localStorage.setItem('eaim_session_code', v);
+  document.getElementById('session-dot').classList.add('active');
+  showToast('✅ 학급 코드로 입장했어요: ' + v);
+  subscribeScenes();
+}
+
+function subscribeScenes() {
+  if (!firebaseReady || !SESSION_CODE) return;
+  if (unsubscribeScenes) unsubscribeScenes();
+  unsubscribeScenes = db.collection('eaim_sessions').doc(SESSION_CODE).collection('scenes')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(snap => {
+      collectedScenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSceneList();
+      syncToLocalStorageForSlideshow();
+    }, err => {
+      console.error(err);
+      showToast('⚠️ Firebase 연결 오류 — 설정을 확인해주세요');
+    });
+}
+
+// ══════════════════════════
+// ✍️ 스케치 캔버스
+// ══════════════════════════
+let sketchCtx = null, sketching = false, sketchColor = '#1a1a2e', sketchErasing = false;
+function initSketch() {
+  const canvas = document.getElementById('sketch-canvas');
+  sketchCtx = canvas.getContext('2d');
+  sketchCtx.fillStyle = '#fff';
+  sketchCtx.fillRect(0, 0, canvas.width, canvas.height);
+  sketchCtx.lineCap = 'round'; sketchCtx.lineJoin = 'round';
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx * (canvas.width / r.width), y: cy * (canvas.height / r.height) };
+  }
+  function start(e) { sketching = true; draw(e); }
+  function draw(e) {
+    if (!sketching) return;
+    e.preventDefault();
+    const p = pos(e);
+    sketchCtx.lineWidth = document.getElementById('sketch-size').value;
+    sketchCtx.strokeStyle = sketchErasing ? '#fff' : sketchColor;
+    sketchCtx.lineTo(p.x, p.y);
+    sketchCtx.stroke();
+    sketchCtx.beginPath();
+    sketchCtx.moveTo(p.x, p.y);
+  }
+  function end() { sketching = false; sketchCtx.beginPath(); }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', draw);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start);
+  canvas.addEventListener('touchmove', draw);
+  canvas.addEventListener('touchend', end);
+}
+function selectSketchColor(color, el) {
+  sketchColor = color; sketchErasing = false;
+  document.querySelectorAll('.sketch-color').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+function setSketchEraser() { sketchErasing = true; showToast('🧹 지우개 모드'); }
+function clearSketch() {
+  const canvas = document.getElementById('sketch-canvas');
+  sketchCtx.fillStyle = '#fff';
+  sketchCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+function chooseSceneVisual(choice) {
+  sceneVisualChoice = choice;
+  document.getElementById('choice-ai').classList.toggle('selected', choice === 'ai');
+  document.getElementById('choice-sketch').classList.toggle('selected', choice === 'sketch');
+}
+
+// ===== 초기화 =====
+window.addEventListener('load', () => {
+  GEMINI_KEY = localStorage.getItem('mm_teacher_api') || localStorage.getItem('eaim_gemini_key') || '';
+  if (GEMINI_KEY) {
+    document.getElementById('api-key').value = GEMINI_KEY;
+    document.getElementById('api-dot').classList.add('active');
+  }
+  if (SESSION_CODE) {
+    document.getElementById('session-code').value = SESSION_CODE;
+    document.getElementById('session-dot').classList.add('active');
+  }
+  buildStyleGrid();
+  buildColorGrid();
+  buildMoodGrid();
+  initSketch();
+  if (firebaseReady && SESSION_CODE) subscribeScenes();
+  else loadScenesFromStorage();
+});
+
+function saveApiKey() {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) return;
+  GEMINI_KEY = key;
+  localStorage.setItem('eaim_gemini_key', key);
+  localStorage.setItem('mm_teacher_api', key);
+  document.getElementById('api-dot').classList.add('active');
+  showToast('✅ API 키 저장됐어요!');
+}
+
+// ===== UI 빌드 =====
+function buildStyleGrid() {
+  const grid = document.getElementById('style-grid');
+  grid.innerHTML = STYLES.map(s => `
+    <div class="style-chip" id="style-${s.id}" onclick="selectStyle('${s.id}')">
+      <span class="emoji">${s.emoji}</span>
+      <div class="label">${s.label}</div>
+      <div class="sub">${s.sub}</div>
+    </div>
+  `).join('');
+}
+
+function buildColorGrid() {
+  const grid = document.getElementById('color-grid');
+  grid.innerHTML = COLORS.map((c,i) => `
+    <div class="color-chip" id="color-${i}" style="background:${c.color}" onclick="toggleColor(${i})" title="${c.label}">
+      <span class="check">✓</span>
+    </div>
+  `).join('');
+}
+
+function buildMoodGrid() {
+  const grid = document.getElementById('mood-grid');
+  grid.innerHTML = MOODS.map(m => `
+    <div class="mood-tag" id="mood-${m.id}" onclick="toggleMood('${m.id}')">${m.label}</div>
+  `).join('');
+}
+
+// ===== 선택 이벤트 =====
+function selectStyle(id) {
+  selectedStyle = id;
+  document.querySelectorAll('.style-chip').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`style-${id}`).classList.add('selected');
+}
+
+function toggleColor(idx) {
+  const el = document.getElementById(`color-${idx}`);
+  if (selectedColors.includes(idx)) {
+    selectedColors = selectedColors.filter(i => i !== idx);
+    el.classList.remove('selected');
+  } else {
+    selectedColors.push(idx);
+    el.classList.add('selected');
+  }
+}
+
+function toggleMood(id) {
+  const el = document.getElementById(`mood-${id}`);
+  if (selectedMoods.includes(id)) {
+    selectedMoods = selectedMoods.filter(m => m !== id);
+    el.classList.remove('selected');
+  } else {
+    selectedMoods.push(id);
+    el.classList.add('selected');
+  }
+}
+
+// ===== 탭 전환 =====
+function switchTab(tab) {
+  document.getElementById('panel-youtube').style.display = tab === 'youtube' ? 'block' : 'none';
+  document.getElementById('panel-file').style.display = tab === 'file' ? 'block' : 'none';
+  document.getElementById('tab-youtube').className = tab === 'youtube' ? 'btn btn-primary' : 'btn btn-secondary';
+  document.getElementById('tab-file').className = tab === 'file' ? 'btn btn-primary' : 'btn btn-secondary';
+}
+
+// ===== 유튜브 임베드 =====
+function loadYoutube() {
+  const url = document.getElementById('music-url').value.trim();
+  if (!url) { showToast('⚠️ 유튜브 URL을 입력해주세요'); return; }
+  const videoId = extractYoutubeId(url);
+  if (!videoId) { showToast('⚠️ 유튜브 URL을 확인해주세요'); return; }
+  const iframe = document.getElementById('yt-iframe');
+  iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  document.getElementById('youtube-player').style.display = 'block';
+  showToast('▶ 유튜브 재생 시작!');
+}
+
+function extractYoutubeId(url) {
+  const patterns = [
+    /youtu\.be\/([^?&]+)/,
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtube\.com\/embed\/([^?&]+)/,
+    /youtube\.com\/shorts\/([^?&]+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// ===== 파일 업로드 =====
+function loadMusicFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const url = URL.createObjectURL(file);
+  const audio = document.getElementById('audio-el');
+  audio.src = url;
+  document.getElementById('music-player').style.display = 'block';
+  document.getElementById('file-name').textContent = '🎵 ' + file.name;
+  audio.play();
+  showToast('🎵 ' + file.name + ' 재생 중!');
+}
+
+// ===== 번역 =====
+async function translatePrompt() {
+  const kr = document.getElementById('prompt-kr').value.trim();
+  if (!kr) { showToast('⚠️ 먼저 한글로 내용을 적어주세요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ API 키를 먼저 입력해주세요'); return; }
+
+  const btn = document.getElementById('btn-translate');
+  btn.textContent = '번역 중...'; btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{ parts:[{ text: `다음 한글 내용을 이미지 생성 AI용 영어 프롬프트로 변환해주세요. 짧고 명확하게, 쉼표로 구분된 키워드 형태로만 출력하세요. 설명 없이 프롬프트만 출력:\n\n${kr}` }] }] })
+    });
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (text) {
+      const box = document.getElementById('translated-box');
+      box.textContent = text.trim();
+      box.style.display = 'block';
+      showToast('✅ 번역 완료!');
+    }
+  } catch(e) {
+    showToast('❌ 번역 실패. API 키를 확인해주세요');
+  }
+  btn.textContent = '🌐 영어로 번역'; btn.disabled = false;
+}
+
+// ===== 최종 프롬프트 조합 =====
+function buildFinalPrompt() {
+  const parts = [];
+  if (selectedStyle) {
+    const s = STYLES.find(s => s.id === selectedStyle);
+    if (s) parts.push(s.prompt);
+  }
+  selectedColors.forEach(i => parts.push(COLORS[i].prompt));
+  selectedMoods.forEach(id => {
+    const m = MOODS.find(m => m.id === id);
+    if (m) parts.push(m.prompt);
+  });
+  const translated = document.getElementById('translated-box').textContent.trim();
+  if (translated) parts.push(translated);
+  else {
+    const kr = document.getElementById('prompt-kr').value.trim();
+    if (kr) parts.push(kr);
+  }
+  parts.push('cinematic, high quality, 16:9');
+  return parts.join(', ');
+}
+
+// ===== 이미지 생성 =====
+async function generateImage() {
+  if (!GEMINI_KEY) { showToast('⚠️ API 키를 먼저 입력해주세요'); return; }
+
+  const finalPrompt = buildFinalPrompt();
+  if (!finalPrompt.includes('cinematic')) { showToast('⚠️ 스타일이나 내용을 먼저 선택해주세요'); return; }
+
+  document.getElementById('result-prompt-text').textContent = finalPrompt;
+  showLoading('✨ AI가 이미지를 그리고 있어요...');
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: finalPrompt }] }],
+        generationConfig:{ responseModalities:['TEXT','IMAGE'] }
+      })
+    });
+    const data = await res.json();
+    const imgPart = (data?.candidates?.[0]?.content?.parts||[]).find(p => p.inlineData);
+
+    if (imgPart) {
+      const dataUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+      generatedImageUrl = dataUrl;
+      const img = document.getElementById('result-img');
+      img.src = dataUrl;
+      img.style.display = 'block';
+      document.getElementById('result-placeholder').style.display = 'none';
+      document.getElementById('result-section').style.display = 'block';
+      document.getElementById('result-section').scrollIntoView({behavior:'smooth'});
+      showToast('🎨 이미지 완성!');
+    } else {
+      throw new Error('이미지 없음');
+    }
+  } catch(e) {
+    showToast('❌ 생성 실패. 다시 시도해보세요');
+    document.getElementById('result-placeholder').style.display = 'flex';
+    document.getElementById('result-section').style.display = 'block';
+  }
+  hideLoading();
+}
+
+// ===== 다운로드 =====
+function downloadImage() {
+  if (!generatedImageUrl) { showToast('⚠️ 먼저 이미지를 생성해주세요'); return; }
+  const a = document.createElement('a');
+  a.href = generatedImageUrl;
+  a.download = `미디어픽쳐_${Date.now()}.png`;
+  a.click();
+  showToast('⬇ 이미지 저장됐어요!');
+}
+
+// ══════════════════════════
+// 🎬 슬라이드쇼 연결 (+ Firebase)
+// ══════════════════════════
+const SLIDESHOW_STORAGE_KEY = 'eaim_musical_data';
+
+function currentEmotionLabel() {
+  if (selectedMoods.length === 0) return '';
+  const m = MOODS.find(m => m.id === selectedMoods[0]);
+  return m ? m.emotionLabel : '';
+}
+
+function currentMusicMoodLabel() {
+  const labels = selectedMoods.map(id => {
+    const m = MOODS.find(m => m.id === id);
+    return m ? m.label.replace(/^\S+\s/, '') : '';
+  }).filter(Boolean);
+  return labels.join(' · ');
+}
+
+async function addSceneToShow() {
+  const visual = sceneVisualChoice === 'sketch' ? sketchDataUrl : generatedImageUrl;
+  if (sceneVisualChoice === 'sketch') sketchDataUrl = document.getElementById('sketch-canvas').toDataURL('image/png');
+  const finalVisual = sceneVisualChoice === 'sketch' ? sketchDataUrl : generatedImageUrl;
+  if (!finalVisual) { showToast('⚠️ 이미지를 생성하거나 스케치를 그려주세요'); return; }
+
+  const title = document.getElementById('scene-title').value.trim() || `장면 ${collectedScenes.length + 1}`;
+  const songTitle = document.getElementById('scene-song').value.trim();
+  const characters = document.getElementById('scene-characters').value.trim();
+  const lyrics = document.getElementById('scene-lyrics').value.trim();
+
+  const scene = {
+    title,
+    imageUrl: finalVisual,
+    visualType: sceneVisualChoice,
+    characters,
+    songTitle,
+    lyrics,
+    emotion: currentEmotionLabel(),
+    musicMood: currentMusicMoodLabel(),
+  };
+
+  if (firebaseReady && SESSION_CODE) {
+    try {
+      await db.collection('eaim_sessions').doc(SESSION_CODE).collection('scenes')
+        .add({ ...scene, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      showToast(`✅ 학급 코드 "${SESSION_CODE}"에 장면이 공유됐어요!`);
+      // onSnapshot이 자동으로 collectedScenes를 갱신합니다
+    } catch(e) {
+      console.error(e);
+      showToast('❌ Firebase 저장 실패 — 학급 코드/설정을 확인해주세요');
+    }
+  } else {
+    collectedScenes.push(scene);
+    saveScenesToStorage();
+    renderSceneList();
+    showToast(`✅ 장면 ${collectedScenes.length}개로 추가됐어요! (학급 코드를 입력하면 여러 기기와 공유돼요)`);
+  }
+}
+
+function syncToLocalStorageForSlideshow() {
+  saveScenesToStorage();
+}
+
+function saveScenesToStorage() {
+  const data = {
+    title: SESSION_CODE || document.getElementById('scene-song').value.trim() || '우리의 뮤직미디어레터',
+    school: '',
+    scenes: collectedScenes,
+  };
+  localStorage.setItem(SLIDESHOW_STORAGE_KEY, JSON.stringify(data));
+}
+
+function loadScenesFromStorage() {
+  try {
+    const raw = localStorage.getItem(SLIDESHOW_STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data && Array.isArray(data.scenes)) {
+      collectedScenes = data.scenes;
+      renderSceneList();
+    }
+  } catch(e) {}
+}
+
+function renderSceneList() {
+  const card = document.getElementById('scene-list-card');
+  const list = document.getElementById('scene-list');
+  const count = document.getElementById('scene-count');
+  count.textContent = collectedScenes.length;
+
+  if (collectedScenes.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  list.innerHTML = collectedScenes.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:10px;padding:8px 12px">
+      <img src="${s.imageUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}</div>
+        <div style="font-size:11px;color:var(--text2)">${s.songTitle || '음악 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''}</div>
+      </div>
+      <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="removeScene(${i})">✕</button>
+    </div>
+  `).join('');
+  populateLetterSceneSelect();
+}
+
+async function removeScene(idx) {
+  const scene = collectedScenes[idx];
+  if (firebaseReady && SESSION_CODE && scene && scene.id) {
+    try {
+      await db.collection('eaim_sessions').doc(SESSION_CODE).collection('scenes').doc(scene.id).delete();
+    } catch(e) { showToast('❌ 삭제 실패'); return; }
+  } else {
+    collectedScenes.splice(idx, 1);
+    saveScenesToStorage();
+    renderSceneList();
+  }
+  showToast('🗑 장면을 삭제했어요');
+}
+
+async function clearScenes() {
+  if (!confirm('모아둔 장면을 모두 지울까요?')) return;
+  if (firebaseReady && SESSION_CODE) {
+    try {
+      const snap = await db.collection('eaim_sessions').doc(SESSION_CODE).collection('scenes').get();
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    } catch(e) { showToast('❌ 초기화 실패'); return; }
+  } else {
+    collectedScenes = [];
+    localStorage.removeItem(SLIDESHOW_STORAGE_KEY);
+    renderSceneList();
+  }
+  showToast('🗑 전체 초기화됐어요');
+}
+
+function goToSlideshow() {
+  if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
+  saveScenesToStorage();
+  window.open('slideshow.html', '_blank');
+}
+
+// ══════════════════════════
+// 🪟 모달 공통
+// ══════════════════════════
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ══════════════════════════
+// 📰 음악 신문
+// ══════════════════════════
+function openNewspaper() {
+  if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
+  const now = new Date();
+  document.getElementById('np-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  buildNpGrid();
+  document.getElementById('newspaper-modal').classList.add('open');
+}
+function buildNpGrid() {
+  const grid = document.getElementById('np-grid');
+  grid.innerHTML = collectedScenes.map((s, i) => `
+    <div class="np-article">
+      <input class="np-input np-article-title" value="장면 ${i+1} — ${s.title||''}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
+      <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
+      <div class="np-caption">
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:vertical;outline:none;color:#333;line-height:1.6" rows="3">${s.lyrics || s.songTitle || ''}</textarea>
+      </div>
+    </div>
+  `).join('');
+}
+function updateNpLayout() {
+  document.getElementById('np-grid').className = 'np-grid ' + document.getElementById('np-layout').value;
+}
+
+// ══════════════════════════
+// 💌 음악 편지
+// ══════════════════════════
+function populateLetterSceneSelect() {
+  const sel = document.getElementById('letter-scene-select');
+  if (!sel) return;
+  sel.innerHTML = collectedScenes.map((s, i) => `<option value="${i}">${i+1}. ${s.title}</option>`).join('');
+}
+function onLetterSceneChange() {
+  const idx = Number(document.getElementById('letter-scene-select').value || 0);
+  fillLetterFromScene(idx);
+}
+function fillLetterFromScene(idx) {
+  const s = collectedScenes[idx]; if (!s) return;
+  document.getElementById('letter-img').src = s.imageUrl;
+  document.getElementById('letter-song').value = s.songTitle || '';
+  if (!document.getElementById('letter-body').value) document.getElementById('letter-body').value = s.lyrics || '';
+}
+function openLetter() {
+  if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
+  const now = new Date();
+  document.getElementById('letter-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  populateLetterSceneSelect();
+  fillLetterFromScene(collectedScenes.length - 1);
+  document.getElementById('letter-modal').classList.add('open');
+}
+
+// ══════════════════════════
+// 🎤 음악 인터뷰
+// ══════════════════════════
+const defaultQuestions = [
+  '이 음악을 처음 들었을 때 어떤 느낌이었나요?',
+  '이 음악을 듣고 떠오른 장면이나 색깔이 있다면?',
+  '이 음악에서 가장 인상 깊었던 부분은 어디인가요? (리듬, 선율, 가사 등)',
+  '이 음악이 어떤 감정을 표현하고 있다고 생각하나요?',
+  '이 음악을 누구에게, 어떤 상황에서 들려주고 싶나요?',
+  '이 음악을 통해 새롭게 알게 된 것이 있다면 무엇인가요?',
+];
+function openInterview() {
+  if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
+  const s = collectedScenes[collectedScenes.length - 1];
+  document.getElementById('interview-img').src = s.imageUrl;
+  document.getElementById('interview-song').value = s.songTitle || '';
+  const now = new Date();
+  document.getElementById('interview-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  buildQASection(defaultQuestions);
+  document.getElementById('interview-modal').classList.add('open');
+}
+function buildQASection(questions) {
+  const section = document.getElementById('qa-section');
+  section.innerHTML = questions.map((q, i) => `
+    <div class="qa-item">
+      <div class="qa-q">Q${i+1}. ${q}</div>
+      <textarea class="qa-textarea" placeholder="답변을 적어보세요..." rows="3"></textarea>
+    </div>
+  `).join('');
+}
+async function generateInterviewQ() {
+  const s = collectedScenes[collectedScenes.length - 1] || {};
+  if (!GEMINI_KEY) { showToast('⚠️ Gemini API 키를 먼저 입력해주세요'); return; }
+  showToast('✨ AI가 질문을 생성하고 있어요...');
+  try {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text:
+        `음악 감상 수업에서 중학생이 다음 음악을 감상했습니다.\n음악: ${s.songTitle||'(제목 미입력)'}\n학생의 감상/가사: ${s.lyrics||'(감상 미입력)'}\n\n이 학생에게 맞는 음악 감상 인터뷰 질문 6개를 만들어주세요.\n- 음악 요소(리듬, 선율, 화성, 음색)와 연결된 질문 포함\n- 학생의 감정과 경험을 끌어내는 질문\n- 서논술형 평가로 활용 가능한 깊이있는 질문\n- 번호 없이 질문만, 한 줄씩, 총 6개만 출력하세요`
+      }]}]})
+    });
+    const data = await resp.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const questions = text.split('\n').map(q=>q.trim()).filter(q=>q.length>5).slice(0,6);
+    if (questions.length > 0) { buildQASection(questions); showToast('✅ AI 질문 생성 완료!'); }
+    else { showToast('⚠️ 질문 생성 실패, 기본 질문으로 표시해요'); buildQASection(defaultQuestions); }
+  } catch(e) {
+    showToast('⚠️ AI 연결 실패, 기본 질문으로 표시해요');
+    buildQASection(defaultQuestions);
+  }
+}
+
+// ===== 유틸 =====
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || '생성 중...';
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
