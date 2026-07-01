@@ -162,6 +162,19 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .sketch-choice{flex:1;min-width:140px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);background:var(--surface2);cursor:pointer;text-align:center;font-size:12px;font-weight:600;color:var(--text2);transition:all .2s}
 .sketch-choice.selected{border-color:#4CAF82;background:rgba(76,175,130,.15);color:#4CAF82}
 
+/* 번역코드표 참고 카드 */
+.code-table{display:flex;flex-direction:column;gap:8px}
+.code-row{display:grid;grid-template-columns:110px 1fr 1fr;gap:10px;background:var(--surface2);border-radius:10px;padding:10px 14px;align-items:center}
+.code-row.head{background:transparent;padding:0 14px;font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.code-elem{font-size:12px;font-weight:700;color:var(--accent3)}
+.code-signal{font-size:12px;color:var(--text)}
+.code-hint{font-size:12px;color:var(--text2)}
+@media(max-width:600px){
+  .code-row{grid-template-columns:1fr;gap:2px}
+  .code-row.head{display:none}
+  .code-elem{color:var(--accent3)}
+}
+
 /* ══ 신문 편집 ══ */
 #newspaper-modal{display:none;position:fixed;inset:0;background:#f5f0e8;z-index:9999;overflow-y:auto}
 #newspaper-modal.open{display:block}
@@ -307,10 +320,29 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
-  <!-- STEP 2: 스타일 선택 -->
+  <!-- STEP 2: 번역코드표 참고 -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,107,157,.15);border:1.5px solid var(--accent2);color:var(--accent2)">2</div>
+      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">2</div>
+      <div>
+        <div class="step-title">🗺️ 번역코드표 참고하기</div>
+        <div class="step-desc">음악을 들으며 아래를 참고해서 스타일·색감·분위기를 골라보세요</div>
+      </div>
+    </div>
+    <div class="code-table">
+      <div class="code-row head"><div>음악 요소</div><div>무엇이 들리나요?</div><div>서사 번역 힌트</div></div>
+      <div class="code-row"><div class="code-elem">셈여림</div><div class="code-signal">소리가 커지거나 작아진다</div><div class="code-hint">감정의 강도 — 조용함 ↔ 폭발적임</div></div>
+      <div class="code-row"><div class="code-elem">선율 윤곽</div><div class="code-signal">음이 올라가거나 내려간다</div><div class="code-hint">긴장 고조/이완, 사건의 방향</div></div>
+      <div class="code-row"><div class="code-elem">형식·반복</div><div class="code-signal">같은 부분이 다시 나온다</div><div class="code-hint">회상, 순환하는 이야기 구조</div></div>
+      <div class="code-row"><div class="code-elem">리듬·템포</div><div class="code-signal">빠르기가 바뀐다</div><div class="code-hint">안정 ↔ 혼란·긴박함</div></div>
+      <div class="code-row"><div class="code-elem">음색·악기</div><div class="code-signal">어떤 악기·목소리가 쓰이는가</div><div class="code-hint">정체성, 장면의 배경·분위기</div></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: 스타일 선택 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,107,157,.15);border:1.5px solid var(--accent2);color:var(--accent2)">3</div>
       <div>
         <div class="step-title">🎨 그림 스타일 선택</div>
         <div class="step-desc">음악의 느낌에 맞는 스타일을 골라보세요</div>
@@ -319,10 +351,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="style-grid" id="style-grid"></div>
   </div>
 
-  <!-- STEP 3: 색상 -->
+  <!-- STEP 4: 색상 -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(0,229,255,.1);border:1.5px solid var(--accent3);color:var(--accent3)">3</div>
+      <div class="step-num" style="background:rgba(0,229,255,.1);border:1.5px solid var(--accent3);color:var(--accent3)">4</div>
       <div>
         <div class="step-title">🌈 색감 선택</div>
         <div class="step-desc">음악의 색깔을 골라보세요 (여러 개 가능)</div>
@@ -331,10 +363,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="color-grid" id="color-grid"></div>
   </div>
 
-  <!-- STEP 4: 분위기 -->
+  <!-- STEP 5: 분위기 -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,213,79,.1);border:1.5px solid var(--gold);color:var(--gold)">4</div>
+      <div class="step-num" style="background:rgba(255,213,79,.1);border:1.5px solid var(--gold);color:var(--gold)">5</div>
       <div>
         <div class="step-title">💭 분위기 선택</div>
         <div class="step-desc">음악에서 느껴지는 감정을 골라보세요 (여러 개 가능)</div>
@@ -343,10 +375,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="mood-grid" id="mood-grid"></div>
   </div>
 
-  <!-- STEP 5: 프롬프트 -->
+  <!-- STEP 6: 프롬프트 -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">5</div>
+      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">6</div>
       <div>
         <div class="step-title">✏️ 자유롭게 표현하기</div>
         <div class="step-desc">음악을 듣고 떠오르는 장면을 한글로 적어보세요</div>
@@ -359,27 +391,25 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
-  <!-- STEP 6: 장면 정보 (신규) -->
+  <!-- STEP 7: 장면 정보 (단순화) -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">6</div>
+      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">7</div>
       <div>
-        <div class="step-title">🎬 장면 정보 (슬라이드쇼용)</div>
-        <div class="step-desc">이 장면을 슬라이드쇼에 넣을 때 쓰일 정보예요</div>
+        <div class="step-title">🎬 장면 정보</div>
+        <div class="step-desc">간단한 정보만 적어주세요</div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <input class="music-url-input" id="scene-title" placeholder="장면 제목 (예: 봄날의 학교 교정)">
-      <input class="music-url-input" id="scene-song" placeholder="음악(곡) 제목">
-      <input class="music-url-input" id="scene-characters" placeholder="등장인물 (쉼표로 구분, 예: 민준, 서아)">
-      <textarea class="prompt-textarea" id="scene-lyrics" style="min-height:60px" placeholder="가사 / 대사 (줄바꿈으로 구분)"></textarea>
+      <input class="music-url-input" id="scene-title" placeholder="장르명 (예: 재즈, 국악, K-pop)">
+      <input class="music-url-input" id="scene-characters" placeholder="참여 인원 (이름, 쉼표로 구분 — 선택)">
     </div>
   </div>
 
-  <!-- STEP 7: 캐릭터·장면 스케치 (활동지 연동) -->
+  <!-- STEP 8: 캐릭터·장면 스케치 (활동지 연동) -->
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">7</div>
+      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">8</div>
       <div>
         <div class="step-title">✍️ 캐릭터·장면 스케치</div>
         <div class="step-desc">활동지의 "캐릭터·장면 스케치" 칸을 여기서 직접 그려도 돼요 (선택)</div>
@@ -968,17 +998,13 @@ async function addSceneToShow() {
   if (!finalVisual) { showToast('⚠️ 이미지를 생성하거나 스케치를 그려주세요'); return; }
 
   const title = document.getElementById('scene-title').value.trim() || `장면 ${collectedScenes.length + 1}`;
-  const songTitle = document.getElementById('scene-song').value.trim();
   const characters = document.getElementById('scene-characters').value.trim();
-  const lyrics = document.getElementById('scene-lyrics').value.trim();
 
   const scene = {
     title,
     imageUrl: finalVisual,
     visualType: sceneVisualChoice,
     characters,
-    songTitle,
-    lyrics,
     emotion: currentEmotionLabel(),
     musicMood: currentMusicMoodLabel(),
   };
@@ -1007,7 +1033,7 @@ function syncToLocalStorageForSlideshow() {
 
 function saveScenesToStorage() {
   const data = {
-    title: SESSION_CODE || document.getElementById('scene-song').value.trim() || '우리의 뮤직미디어레터',
+    title: SESSION_CODE || '우리의 뮤직미디어레터',
     school: '',
     scenes: collectedScenes,
   };
@@ -1040,7 +1066,7 @@ function renderSceneList() {
       <img src="${s.imageUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}</div>
-        <div style="font-size:11px;color:var(--text2)">${s.songTitle || '음악 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''}</div>
+        <div style="font-size:11px;color:var(--text2)">${s.characters || '참여자 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''}</div>
       </div>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="removeScene(${i})">✕</button>
     </div>
@@ -1107,7 +1133,7 @@ function buildNpGrid() {
       <input class="np-input np-article-title" value="장면 ${i+1} — ${s.title||''}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
       <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
       <div class="np-caption">
-        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:vertical;outline:none;color:#333;line-height:1.6" rows="3">${s.lyrics || s.songTitle || ''}</textarea>
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:vertical;outline:none;color:#333;line-height:1.6" rows="3">${[s.emotion, s.musicMood].filter(Boolean).join(' · ')}</textarea>
       </div>
     </div>
   `).join('');
@@ -1131,7 +1157,7 @@ function onLetterSceneChange() {
 function fillLetterFromScene(idx) {
   const s = collectedScenes[idx]; if (!s) return;
   document.getElementById('letter-img').src = s.imageUrl;
-  document.getElementById('letter-song').value = s.songTitle || '';
+  document.getElementById('letter-song').value = s.title || '';
   if (!document.getElementById('letter-body').value) document.getElementById('letter-body').value = s.lyrics || '';
 }
 function openLetter() {
@@ -1158,7 +1184,7 @@ function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const s = collectedScenes[collectedScenes.length - 1];
   document.getElementById('interview-img').src = s.imageUrl;
-  document.getElementById('interview-song').value = s.songTitle || '';
+  document.getElementById('interview-song').value = s.title || '';
   const now = new Date();
   document.getElementById('interview-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
   buildQASection(defaultQuestions);
@@ -1181,7 +1207,7 @@ async function generateInterviewQ() {
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({contents:[{parts:[{text:
-        `음악 감상 수업에서 중학생이 다음 음악을 감상했습니다.\n음악: ${s.songTitle||'(제목 미입력)'}\n학생의 감상/가사: ${s.lyrics||'(감상 미입력)'}\n\n이 학생에게 맞는 음악 감상 인터뷰 질문 6개를 만들어주세요.\n- 음악 요소(리듬, 선율, 화성, 음색)와 연결된 질문 포함\n- 학생의 감정과 경험을 끌어내는 질문\n- 서논술형 평가로 활용 가능한 깊이있는 질문\n- 번호 없이 질문만, 한 줄씩, 총 6개만 출력하세요`
+        `음악 감상 수업에서 중학생이 다음 장르의 음악을 감상했습니다.\n장르: ${s.title||'(장르 미입력)'}\n감정/분위기: ${[s.emotion, s.musicMood].filter(Boolean).join(', ')||'(미입력)'}\n\n이 학생에게 맞는 음악 감상 인터뷰 질문 6개를 만들어주세요.\n- 음악 요소(리듬, 선율, 화성, 음색)와 연결된 질문 포함\n- 학생의 감정과 경험을 끌어내는 질문\n- 서논술형 평가로 활용 가능한 깊이있는 질문\n- 번호 없이 질문만, 한 줄씩, 총 6개만 출력하세요`
       }]}]})
     });
     const data = await resp.json();
