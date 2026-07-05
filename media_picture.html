@@ -169,6 +169,16 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   .code-row:not(.head){padding:12px 14px}
 }
 
+/* ── 음악 구간 나누기 & AI 설명 (신규) ── */
+.segment-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.segment-chip{padding:10px 16px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:700;color:var(--text2);transition:all .2s}
+.segment-chip:hover{border-color:rgba(124,77,255,.5)}
+.segment-chip.selected{border-color:var(--accent);background:rgba(124,77,255,.2);color:var(--text)}
+.desc-box{background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px}
+.desc-textarea{width:100%;background:transparent;border:none;color:var(--text);font-size:13px;line-height:1.7;outline:none;font-family:inherit;resize:vertical;min-height:60px}
+.desc-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--text2)}
+.desc-count.over{color:var(--accent2);font-weight:700}
+
 #newspaper-modal{display:none;position:fixed;inset:0;background:#f5f0e8;z-index:9999;overflow-y:auto}
 #newspaper-modal.open{display:block}
 .np-toolbar{position:sticky;top:0;background:#1a1a1a;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:10;flex-wrap:wrap}
@@ -320,7 +330,25 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">2</div>
+      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">2</div>
+      <div>
+        <div class="step-title">✂️ 구간 나누기 &amp; 음악 설명</div>
+        <div class="step-desc">몇 부분으로 나눠서 감상할지 고르고, AI가 짧은 설명을 만들어줘요</div>
+      </div>
+    </div>
+    <div class="segment-row" id="segment-row"></div>
+    <div class="desc-box">
+      <textarea class="desc-textarea" id="music-desc" maxlength="100" placeholder="AI 설명 생성을 누르면 여기에 짧은 설명이 채워져요 (직접 수정 가능)"></textarea>
+      <div class="desc-meta">
+        <span id="desc-count">0/100자</span>
+        <button class="btn btn-secondary" id="btn-gen-desc" onclick="generateMusicDescription()">✨ AI 설명 생성</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">3</div>
       <div>
         <div class="step-title">🗺️ 번역코드표 참고하기</div>
         <div class="step-desc">음악을 들으며 아래를 참고해서 스타일·색감·분위기를 골라보세요</div>
@@ -342,7 +370,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,107,157,.15);border:1.5px solid var(--accent2);color:var(--accent2)">3</div>
+      <div class="step-num" style="background:rgba(255,107,157,.15);border:1.5px solid var(--accent2);color:var(--accent2)">4</div>
       <div>
         <div class="step-title">🎨 그림 스타일 선택</div>
         <div class="step-desc">음악의 느낌에 맞는 스타일을 골라보세요</div>
@@ -353,7 +381,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(0,229,255,.1);border:1.5px solid var(--accent3);color:var(--accent3)">4</div>
+      <div class="step-num" style="background:rgba(0,229,255,.1);border:1.5px solid var(--accent3);color:var(--accent3)">5</div>
       <div>
         <div class="step-title">🌈 색감 선택</div>
         <div class="step-desc">음악의 색깔을 골라보세요 (여러 개 가능)</div>
@@ -364,7 +392,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,213,79,.1);border:1.5px solid var(--gold);color:var(--gold)">5</div>
+      <div class="step-num" style="background:rgba(255,213,79,.1);border:1.5px solid var(--gold);color:var(--gold)">6</div>
       <div>
         <div class="step-title">💭 분위기 선택</div>
         <div class="step-desc">음악에서 느껴지는 감정을 골라보세요 (여러 개 가능)</div>
@@ -375,7 +403,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">6</div>
+      <div class="step-num" style="background:rgba(124,77,255,.2);border:1.5px solid var(--accent);color:var(--accent)">7</div>
       <div>
         <div class="step-title">✏️ 자유롭게 표현하기</div>
         <div class="step-desc">음악을 듣고 떠오르는 장면을 한글로 적어보세요</div>
@@ -390,7 +418,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">7</div>
+      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">8</div>
       <div>
         <div class="step-title">🎬 장면 정보</div>
         <div class="step-desc">간단한 정보만 적어주세요</div>
@@ -404,7 +432,26 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <div class="step-card">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">8</div>
+      <div class="step-num" style="background:rgba(233,69,96,.15);border:1.5px solid #E94560;color:#E94560">9</div>
+      <div>
+        <div class="step-title">🎼 수노(Suno) 편곡 프롬프트</div>
+        <div class="step-desc">원곡은 유튜브로 감상하고, 영상용 음악은 이 프롬프트로 Suno에서 편곡해서 만들어요</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:12px">장르·번역코드표·설명을 참고해서 Suno에 붙여넣을 스타일 프롬프트를 만들어요. 장르명과 설명을 먼저 채워두면 더 정확해요.</div>
+    <button class="btn btn-secondary" onclick="generateSunoPrompt()" id="btn-gen-suno" style="margin-bottom:10px">✨ 편곡 프롬프트 생성</button>
+    <div class="desc-box">
+      <textarea class="desc-textarea" id="suno-prompt" style="min-height:70px" placeholder="생성된 프롬프트가 여기에 나와요. Suno의 'Style of Music' 칸에 붙여넣으면 돼요."></textarea>
+      <div class="desc-meta">
+        <span id="suno-count">0자</span>
+        <button class="btn btn-secondary" onclick="copySunoPrompt()">📋 복사하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,213,79,.15);border:1.5px solid var(--gold);color:var(--gold)">10</div>
       <div>
         <div class="step-title">✍️ 캐릭터·장면 스케치</div>
         <div class="step-desc">활동지의 "캐릭터·장면 스케치" 칸을 여기서 직접 그려도 돼요 (선택)</div>
@@ -617,6 +664,7 @@ let generatedImageUrl = null;
 let collectedScenes = [];
 let sketchDataUrl = null;
 let sceneVisualChoice = 'ai';
+let selectedSegments = null;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBaLg0f5x0ydfHxn_nzgZ1pAELvJw6PzoY",
@@ -781,6 +829,7 @@ window.addEventListener('load', () => {
   buildStyleGrid();
   buildColorGrid();
   buildMoodGrid();
+  buildSegmentRow();
   initSketch();
   if (firebaseReady && SESSION_CODE) subscribeScenes();
   else loadScenesFromStorage();
@@ -821,6 +870,162 @@ function buildMoodGrid() {
   grid.innerHTML = MOODS.map(m => `
     <div class="mood-tag" id="mood-${m.id}" onclick="toggleMood('${m.id}')">${m.label}</div>
   `).join('');
+}
+
+/* ── 구간 나누기 (신규) ── */
+function buildSegmentRow() {
+  const row = document.getElementById('segment-row');
+  row.innerHTML = [2,3,4,5,6].map(n => `
+    <div class="segment-chip" id="seg-${n}" onclick="selectSegments(${n})">${n}등분</div>
+  `).join('');
+}
+function selectSegments(n) {
+  selectedSegments = n;
+  document.querySelectorAll('.segment-chip').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`seg-${n}`).classList.add('selected');
+}
+
+/* ── 음악 설명 자동생성 (신규) ── */
+const DESC_LIMIT = 100;
+
+function updateDescCount() {
+  const el = document.getElementById('music-desc');
+  const countEl = document.getElementById('desc-count');
+  const len = el.value.length;
+  countEl.textContent = `${len}/${DESC_LIMIT}자`;
+  countEl.classList.toggle('over', len >= DESC_LIMIT);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('music-desc');
+  if (el) el.addEventListener('input', updateDescCount);
+  const sunoEl = document.getElementById('suno-prompt');
+  if (sunoEl) sunoEl.addEventListener('input', updateSunoCount);
+});
+
+function updateSunoCount() {
+  const el = document.getElementById('suno-prompt');
+  document.getElementById('suno-count').textContent = `${el.value.length}자`;
+}
+
+async function generateSunoPrompt() {
+  if (!GEMINI_KEY) { showToast('⚠️ API 키를 먼저 입력해주세요'); return; }
+
+  const btn = document.getElementById('btn-gen-suno');
+  btn.disabled = true; btn.textContent = '생성 중...';
+
+  const genre = document.getElementById('scene-title')?.value.trim() || '';
+  const description = document.getElementById('music-desc')?.value.trim() || '';
+  const analysis = ['dynamics','melody','form','rhythm','timbre']
+    .map(k => document.getElementById('obs-' + k)?.value.trim())
+    .filter(Boolean).join(', ');
+  const moodTags = selectedMoods.map(id => {
+    const m = MOODS.find(m => m.id === id);
+    return m ? m.prompt : '';
+  }).filter(Boolean).join(', ');
+
+  const context = [
+    genre && `장르: ${genre}`,
+    description && `곡 설명: ${description}`,
+    analysis && `음악적 특징: ${analysis}`,
+    moodTags && `분위기: ${moodTags}`,
+  ].filter(Boolean).join('\n');
+
+  if (!context) {
+    showToast('⚠️ 장르나 설명을 먼저 하나라도 입력해주세요');
+    btn.disabled = false; btn.textContent = '✨ 편곡 프롬프트 생성';
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text:
+          `아래 원곡 정보를 참고해서, Suno AI 음악 생성에 쓸 "Style of Music" 프롬프트를 만들어줘.\n` +
+          `원곡의 장르와 무드는 유지하되, 학생이 저작권 걱정 없이 쓸 수 있는 편곡 버전이라는 느낌으로.\n` +
+          `악기 구성, 템포, 무드를 영어 키워드로, 쉼표로 구분해서 120자 이내로만 출력해줘. 설명이나 문장 없이 키워드만 출력해.\n\n${context}`
+        }] }]
+      })
+    });
+    const data = await res.json();
+    let text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim().replace(/^"|"$/g, '');
+    if (text.length > 120) text = text.slice(0, 119) + '…';
+
+    if (text) {
+      document.getElementById('suno-prompt').value = text;
+      updateSunoCount();
+      showToast('✅ 프롬프트 생성 완료! Suno에 붙여넣어보세요');
+    } else {
+      showToast('⚠️ 생성 실패, 직접 적어주세요');
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 생성 실패 — 다시 시도해주세요');
+  }
+  btn.disabled = false; btn.textContent = '✨ 편곡 프롬프트 생성';
+}
+
+function copySunoPrompt() {
+  const el = document.getElementById('suno-prompt');
+  const text = el.value.trim();
+  if (!text) { showToast('⚠️ 먼저 프롬프트를 생성해주세요'); return; }
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('📋 복사했어요! Suno에 붙여넣으세요'))
+    .catch(() => { el.select(); showToast('⚠️ 자동 복사 실패 — 직접 선택해서 복사해주세요'); });
+}
+
+async function generateMusicDescription() {
+  if (!GEMINI_KEY) { showToast('⚠️ API 키를 먼저 입력해주세요'); return; }
+
+  const btn = document.getElementById('btn-gen-desc');
+  btn.disabled = true; btn.textContent = '생성 중...';
+
+  try {
+    let text = '';
+    if (currentAudioBase64) {
+      // 파일 업로드된 경우: 오디오를 직접 듣고 설명 생성
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{ parts:[
+            { inlineData: { mimeType: currentAudioMime, data: currentAudioBase64 } },
+            { text: `이 음악을 듣고, 중학생이 이해하기 쉬운 설명을 정확히 ${DESC_LIMIT}자 이내 한국어 한두 문장으로 써주세요. 장르·분위기·주요 악기 중심으로, 설명 없이 문장만 출력하세요.` }
+          ]}],
+          generationConfig:{ temperature:0.5 }
+        })
+      });
+      const data = await res.json();
+      text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      // 유튜브만 재생 중인 경우: 검색어/제목 기반 추정 설명
+      const hint = document.getElementById('yt-search-query').value.trim()
+        || document.getElementById('music-url').value.trim()
+        || '지금 재생 중인 곡';
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{ parts:[{ text: `다음 정보를 바탕으로 이 음악에 대한 중학생용 짧은 설명을 정확히 ${DESC_LIMIT}자 이내 한국어 한두 문장으로 써주세요. 실제로 듣지는 못했으니 장르 이름에서 유추할 수 있는 일반적인 특징 위주로, 단정적이지 않게 써주세요. 설명 없이 문장만 출력하세요.\n\n정보: ${hint}` }] }]
+        })
+      });
+      const data = await res.json();
+      text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    text = text.trim().replace(/^"|"$/g, '');
+    if (text.length > DESC_LIMIT) text = text.slice(0, DESC_LIMIT - 1) + '…';
+
+    if (text) {
+      document.getElementById('music-desc').value = text;
+      updateDescCount();
+      showToast('✅ 설명이 생성됐어요, 필요하면 직접 고쳐도 돼요');
+    } else {
+      showToast('⚠️ 설명 생성 실패, 직접 적어주세요');
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 설명 생성 실패 — 다시 시도하거나 직접 적어주세요');
+  }
+  btn.disabled = false; btn.textContent = '✨ AI 설명 생성';
 }
 
 function selectStyle(id) {
@@ -1095,6 +1300,7 @@ async function addSceneToShow() {
   const analysis = ['dynamics','melody','form','rhythm','timbre']
     .map(k => document.getElementById('obs-' + k)?.value.trim())
     .filter(Boolean).join(' / ');
+  const description = document.getElementById('music-desc')?.value.trim() || '';
 
   const scene = {
     title,
@@ -1102,6 +1308,8 @@ async function addSceneToShow() {
     visualType: sceneVisualChoice,
     characters,
     analysis,
+    description,
+    segments: selectedSegments,
     emotion: currentEmotionLabel(),
     musicMood: currentMusicMoodLabel(),
   };
@@ -1228,7 +1436,7 @@ function buildNpGrid() {
       <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
       <div class="field-hint">💡 이렇게 써보세요: 이 장면에서 어떤 음악 요소(리듬·선율·음색 등)가 들렸는지, 왜 이 그림을 골랐는지, 이 장면이 나타내는 감정은 무엇인지</div>
       <div class="np-caption">
-        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="음악을 들으며 느낀 점을 자세히 적어보세요...">${[s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="음악을 들으며 느낀 점을 자세히 적어보세요...">${[s.description, s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
       </div>
     </div>
   `).join('');
