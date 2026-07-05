@@ -196,6 +196,14 @@ select.bubble-ctrl-btn{padding:5px 8px}
 
 @keyframes starTwinkle{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
 .star-particle{position:absolute;color:#fff;animation:starTwinkle ease-in-out infinite}
+
+/* ── 영상용 음악 업로드 (신규) ── */
+#music-upload-bar{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.75);backdrop-filter:blur(10px);border:1px solid rgba(76,175,130,.4);border-radius:24px;padding:8px 16px;font-size:12px}
+#music-upload-bar label{color:rgba(255,255,255,.6);white-space:nowrap}
+#music-upload-bar input[type=file]{font-size:11px;color:rgba(255,255,255,.6);max-width:170px}
+.music-dot{width:7px;height:7px;border-radius:50%;background:#666;flex-shrink:0}
+.music-dot.active{background:#4CAF82;box-shadow:0 0 8px #4CAF82}
+#music-upload-bar .mu-hide-btn{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.5);border-radius:14px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -222,6 +230,13 @@ select.bubble-ctrl-btn{padding:5px 8px}
 <div id="signal-indicator">🚦 <span id="signal-text">음향 신호 발신 중</span></div>
 <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-text">녹화 중... 0:00</span></div>
 <div id="blackout"><div id="blackout-text"></div></div>
+
+<div id="music-upload-bar">
+  <div class="music-dot" id="music-upload-dot"></div>
+  <label>🎵 영상용 음악 (편곡본)</label>
+  <input type="file" id="arrangement-file" accept="audio/*" onchange="loadArrangementFile(event)">
+  <button class="mu-hide-btn" onclick="toggleMusicBar()">숨기기</button>
+</div>
 
 <div id="char-panel">
   <h4>🎭 캐릭터 레이어</h4>
@@ -533,12 +548,35 @@ function stopLoopAnim() {
   currentLoopAnim = null; showToast('⏹ 상시 효과 중지');
 }
 
+/* ── 영상용 음악 업로드 & 믹싱 녹화 (신규) ── */
+let arrangementAudioEl = null;
+let arrangementFile = null;
+let audioCtx = null;
+let audioDestNode = null;
+
+function loadArrangementFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  arrangementFile = file;
+  if (arrangementAudioEl) { arrangementAudioEl.pause(); arrangementAudioEl.remove(); }
+  arrangementAudioEl = document.createElement('audio');
+  arrangementAudioEl.src = URL.createObjectURL(file);
+  arrangementAudioEl.loop = false;
+  document.body.appendChild(arrangementAudioEl);
+  document.getElementById('music-upload-dot').classList.add('active');
+  showToast('🎵 편곡본 업로드 완료: ' + file.name);
+}
+function toggleMusicBar() {
+  const bar = document.getElementById('music-upload-bar');
+  bar.style.display = bar.style.display === 'none' ? 'flex' : 'none';
+}
+
 let mediaRecorder = null, recChunks = [], recTimer = null, recSeconds = 0;
 async function toggleRecording() {
   const btn = document.getElementById('btn-rec');
   const indicator = document.getElementById('rec-indicator');
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
+    if (arrangementAudioEl) arrangementAudioEl.pause();
     clearInterval(recTimer);
     btn.textContent = '⏺';
     btn.style.color = 'rgba(255,255,255,.8)';
@@ -546,12 +584,37 @@ async function toggleRecording() {
     showToast('⏹ 녹화 중지 — 저장 중...');
   } else {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // 화면(영상)만 캡처. 오디오는 시스템 공유에 기대지 않고
+      // 업로드된 편곡본을 Web Audio API로 직접 믹싱해서 넣어요.
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: 'screen', frameRate: 30 },
-        audio: true
+        audio: false
       });
+
+      let finalStream;
+      if (arrangementAudioEl) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        audioDestNode = audioCtx.createMediaStreamDestination();
+        const source = audioCtx.createMediaElementSource(arrangementAudioEl);
+        source.connect(audioDestNode);
+        // 녹화 중에도 모니터링용으로 스피커에도 같이 들리게
+        source.connect(audioCtx.destination);
+
+        finalStream = new MediaStream([
+          ...displayStream.getVideoTracks(),
+          ...audioDestNode.stream.getAudioTracks()
+        ]);
+        arrangementAudioEl.currentTime = 0;
+        arrangementAudioEl.play();
+        showToast('🎵 업로드한 편곡본으로 녹화를 시작해요');
+      } else {
+        finalStream = displayStream;
+        showToast('⚠️ 편곡본을 업로드하지 않아 영상에 음악이 안 들어갈 수 있어요');
+      }
+
       recChunks = []; recSeconds = 0;
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+      mediaRecorder = new MediaRecorder(finalStream, { mimeType: 'video/webm;codecs=vp9,opus' });
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recChunks, { type: 'video/webm' });
@@ -560,9 +623,19 @@ async function toggleRecording() {
         a.href = url;
         a.download = `EAIM_슬라이드쇼_${Date.now()}.webm`;
         a.click();
-        stream.getTracks().forEach(t => t.stop());
-        showToast('🎬 영상 저장 완료!');
+        displayStream.getTracks().forEach(t => t.stop());
+        showToast('🎬 영상 저장 완료! (편곡본 음악 포함)');
       };
+      // 화면 공유를 사용자가 직접 중지한 경우도 녹화 종료로 처리
+      displayStream.getVideoTracks()[0].addEventListener('ended', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
+      });
+      // 편곡본이 먼저 끝나면 자동으로 녹화 종료
+      if (arrangementAudioEl) {
+        arrangementAudioEl.addEventListener('ended', () => {
+          if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
+        }, { once: true });
+      }
       mediaRecorder.start(1000);
       btn.textContent = '⏹';
       btn.style.color = '#ff5252';
@@ -574,6 +647,7 @@ async function toggleRecording() {
       }, 1000);
       showToast('⏺ 녹화 시작!');
     } catch(e) {
+      console.error(e);
       showToast('⚠️ 화면 공유를 허용해주세요');
     }
   }
