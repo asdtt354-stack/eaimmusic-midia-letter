@@ -142,6 +142,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .sheet-dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0}
 .sheet-dot.active{background:#0F9D58;box-shadow:0 0 8px #0F9D58}
 
+.student-bar{background:linear-gradient(135deg,rgba(255,213,79,.1),rgba(124,77,255,.08));border:1px solid rgba(255,213,79,.35);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.student-bar label{font-size:12px;color:var(--text2);letter-spacing:1px;white-space:nowrap}
+.student-number-input{width:90px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;text-align:center}
+.student-number-input:focus{border-color:var(--gold)}
+.student-dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0}
+.student-dot.active{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+.student-save-status{font-size:11px;color:var(--text2);white-space:nowrap}
+.student-save-status.saving{color:var(--gold)}
+
 .sketch-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .sketch-color{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0}
 .sketch-color.active{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
@@ -268,6 +277,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <label>학급 코드</label>
     <input class="session-key-input" id="session-code" placeholder="예: 3-1-바람의빛깔 (같은 코드를 쓰는 사람끼리 장면이 모여요)">
     <button class="btn btn-secondary" onclick="saveSessionCode()">입장</button>
+  </div>
+
+  <div class="student-bar">
+    <div class="student-dot" id="student-dot"></div>
+    <label>내 번호</label>
+    <input class="student-number-input" id="student-number" placeholder="7" inputmode="numeric">
+    <button class="btn btn-secondary" onclick="loadStudentWork()">📂 이어서 하기</button>
+    <span class="student-save-status" id="student-save-status"></span>
   </div>
 
   <div class="api-bar">
@@ -667,7 +684,7 @@ let sceneVisualChoice = 'ai';
 let selectedSegments = null;
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBaLg0f5x0ydfHxn_nzgZ1pAELvJw6PzoY",
+  apiKey: "AIzaSyBalg0f5x0ydfHxn_nzgZ1pAELvJw6PzoY",
   authDomain: "eaim-classroom.firebaseapp.com",
   projectId: "eaim-classroom",
   storageBucket: "eaim-classroom.firebasestorage.app",
@@ -686,6 +703,135 @@ try {
 
 let SESSION_CODE = localStorage.getItem('eaim_session_code') || '';
 let unsubscribeScenes = null;
+
+// ══════════════════════════
+// 👤 학생별 진행상황 저장/이어하기
+// 학급 코드 + 내 번호로 eaim_sessions/{code}/students/{번호} 문서에
+// 지금까지 채운 내용을 자동저장하고, 다음 시간에 번호만 입력하면 불러와요.
+// ══════════════════════════
+let STUDENT_NUMBER = localStorage.getItem('eaim_student_number') || '';
+let studentDraftTimer = null;
+let studentAutosaveEnabled = false; // 번호로 "이어서 하기"를 한 번이라도 해야 자동저장 시작
+
+function studentDocRef(){
+  return db.collection('eaim_sessions').doc(SESSION_CODE).collection('students').doc(STUDENT_NUMBER);
+}
+
+function setStudentSaveStatus(msg){
+  const el = document.getElementById('student-save-status');
+  if (el) el.textContent = msg;
+}
+
+function collectDraftData(){
+  return {
+    musicDesc: document.getElementById('music-desc')?.value || '',
+    selectedSegments,
+    obs: {
+      dynamics: document.getElementById('obs-dynamics')?.value || '',
+      melody: document.getElementById('obs-melody')?.value || '',
+      form: document.getElementById('obs-form')?.value || '',
+      rhythm: document.getElementById('obs-rhythm')?.value || '',
+      timbre: document.getElementById('obs-timbre')?.value || '',
+    },
+    selectedStyle,
+    selectedColors,
+    selectedMoods,
+    promptKr: document.getElementById('prompt-kr')?.value || '',
+    translated: document.getElementById('translated-box')?.textContent || '',
+    sceneTitle: document.getElementById('scene-title')?.value || '',
+    sceneCharacters: document.getElementById('scene-characters')?.value || '',
+    sunoPrompt: document.getElementById('suno-prompt')?.value || '',
+    sketchDataUrl: sketchDataUrl || null,
+    sceneVisualChoice,
+  };
+}
+
+function applyDraftData(d){
+  if (!d) return;
+  if (d.musicDesc !== undefined) { document.getElementById('music-desc').value = d.musicDesc; updateDescCount(); }
+  if (d.selectedSegments) selectSegments(d.selectedSegments);
+  if (d.obs) {
+    Object.keys(d.obs).forEach(k => { const el = document.getElementById('obs-'+k); if (el) el.value = d.obs[k]; });
+  }
+  if (d.selectedStyle) selectStyle(d.selectedStyle);
+  if (Array.isArray(d.selectedColors)) {
+    selectedColors = [];
+    document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('selected'));
+    d.selectedColors.forEach(i => toggleColor(i));
+  }
+  if (Array.isArray(d.selectedMoods)) {
+    selectedMoods = [];
+    document.querySelectorAll('.mood-tag').forEach(c => c.classList.remove('selected'));
+    d.selectedMoods.forEach(id => toggleMood(id));
+  }
+  if (d.promptKr !== undefined) document.getElementById('prompt-kr').value = d.promptKr;
+  if (d.translated) {
+    const box = document.getElementById('translated-box');
+    box.textContent = d.translated; box.style.display = 'block';
+  }
+  if (d.sceneTitle !== undefined) document.getElementById('scene-title').value = d.sceneTitle;
+  if (d.sceneCharacters !== undefined) document.getElementById('scene-characters').value = d.sceneCharacters;
+  if (d.sunoPrompt !== undefined) { document.getElementById('suno-prompt').value = d.sunoPrompt; updateSunoCount(); }
+  if (d.sceneVisualChoice) chooseSceneVisual(d.sceneVisualChoice);
+  if (d.sketchDataUrl) {
+    sketchDataUrl = d.sketchDataUrl;
+    const img = new Image();
+    img.onload = () => { sketchCtx.clearRect(0,0,960,540); sketchCtx.drawImage(img,0,0,960,540); };
+    img.src = d.sketchDataUrl;
+  }
+}
+
+async function loadStudentWork(){
+  const num = document.getElementById('student-number').value.trim();
+  if (!num) { showToast('⚠️ 번호를 입력해주세요'); return; }
+  if (!SESSION_CODE) { showToast('⚠️ 먼저 학급 코드로 입장해주세요'); return; }
+  if (!firebaseReady) { showToast('⚠️ Firebase 설정이 필요해요'); return; }
+  STUDENT_NUMBER = num;
+  localStorage.setItem('eaim_student_number', num);
+  document.getElementById('student-dot').classList.add('active');
+  try {
+    const doc = await studentDocRef().get();
+    if (doc.exists) {
+      const data = doc.data();
+      applyDraftData(data.draft);
+      pendingNewspaperData = data.newspaper || null;
+      pendingLetterData = data.letter || null;
+      pendingInterviewData = data.interview || null;
+      showToast(`✅ ${num}번 학생의 이전 작업을 불러왔어요!`);
+    } else {
+      showToast(`📝 ${num}번으로 새로 시작해요. 이제부터 자동저장돼요`);
+    }
+    studentAutosaveEnabled = true;
+    setStudentSaveStatus('자동저장 켜짐');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 불러오기 실패 — 학급 코드/번호를 확인해주세요');
+  }
+}
+
+function scheduleDraftSave(){
+  if (!studentAutosaveEnabled || !firebaseReady || !SESSION_CODE || !STUDENT_NUMBER) return;
+  setStudentSaveStatus('저장 중...');
+  clearTimeout(studentDraftTimer);
+  studentDraftTimer = setTimeout(async () => {
+    try {
+      await studentDocRef().set({ draft: collectDraftData(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
+      setStudentSaveStatus('저장됨 ✓');
+    } catch(e) {
+      console.error(e);
+      setStudentSaveStatus('저장 실패');
+    }
+  }, 1200);
+}
+
+async function saveModalData(key, data){
+  if (!studentAutosaveEnabled || !firebaseReady || !SESSION_CODE || !STUDENT_NUMBER) return;
+  try {
+    await studentDocRef().set({ [key]: data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
+  } catch(e) { console.warn('모달 저장 실패', e); }
+}
+
+let pendingNewspaperData = null, pendingLetterData = null, pendingInterviewData = null;
 
 // ══════════════════════════
 // 📊 구글시트 연동
@@ -781,7 +927,7 @@ function initSketch() {
     sketchCtx.beginPath();
     sketchCtx.moveTo(p.x, p.y);
   }
-  function end() { sketching = false; sketchCtx.beginPath(); }
+  function end() { sketching = false; sketchCtx.beginPath(); sketchDataUrl = canvas.toDataURL('image/png'); scheduleDraftSave(); }
 
   canvas.addEventListener('mousedown', start);
   canvas.addEventListener('mousemove', draw);
@@ -800,11 +946,14 @@ function clearSketch() {
   const canvas = document.getElementById('sketch-canvas');
   sketchCtx.fillStyle = '#fff';
   sketchCtx.fillRect(0, 0, canvas.width, canvas.height);
+  sketchDataUrl = canvas.toDataURL('image/png');
+  scheduleDraftSave();
 }
 function chooseSceneVisual(choice) {
   sceneVisualChoice = choice;
   document.getElementById('choice-ai').classList.toggle('selected', choice === 'ai');
   document.getElementById('choice-sketch').classList.toggle('selected', choice === 'sketch');
+  scheduleDraftSave();
 }
 
 window.addEventListener('load', () => {
@@ -816,6 +965,9 @@ window.addEventListener('load', () => {
   if (SESSION_CODE) {
     document.getElementById('session-code').value = SESSION_CODE;
     document.getElementById('session-dot').classList.add('active');
+  }
+  if (STUDENT_NUMBER) {
+    document.getElementById('student-number').value = STUDENT_NUMBER;
   }
   document.getElementById('sheet-url').value = SHEET_URL;
   document.getElementById('sheet-dot').classList.toggle('active', !!SHEET_URL);
@@ -831,9 +983,15 @@ window.addEventListener('load', () => {
   buildMoodGrid();
   buildSegmentRow();
   initSketch();
+  attachDraftAutosaveListeners();
   if (firebaseReady && SESSION_CODE) subscribeScenes();
   else loadScenesFromStorage();
 });
+
+function attachDraftAutosaveListeners(){
+  ['music-desc','obs-dynamics','obs-melody','obs-form','obs-rhythm','obs-timbre','prompt-kr','scene-title','scene-characters','suno-prompt']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', scheduleDraftSave); });
+}
 
 function saveApiKey() {
   const key = document.getElementById('api-key').value.trim();
@@ -883,6 +1041,7 @@ function selectSegments(n) {
   selectedSegments = n;
   document.querySelectorAll('.segment-chip').forEach(el => el.classList.remove('selected'));
   document.getElementById(`seg-${n}`).classList.add('selected');
+  scheduleDraftSave();
 }
 
 /* ── 음악 설명 자동생성 (신규) ── */
@@ -954,6 +1113,7 @@ async function generateSunoPrompt() {
     if (text) {
       document.getElementById('suno-prompt').value = text;
       updateSunoCount();
+      scheduleDraftSave();
       showToast('✅ 프롬프트 생성 완료! Suno에 붙여넣어보세요');
     } else {
       showToast('⚠️ 생성 실패, 직접 적어주세요');
@@ -1017,6 +1177,7 @@ async function generateMusicDescription() {
     if (text) {
       document.getElementById('music-desc').value = text;
       updateDescCount();
+      scheduleDraftSave();
       showToast('✅ 설명이 생성됐어요, 필요하면 직접 고쳐도 돼요');
     } else {
       showToast('⚠️ 설명 생성 실패, 직접 적어주세요');
@@ -1032,6 +1193,7 @@ function selectStyle(id) {
   selectedStyle = id;
   document.querySelectorAll('.style-chip').forEach(el => el.classList.remove('selected'));
   document.getElementById(`style-${id}`).classList.add('selected');
+  scheduleDraftSave();
 }
 
 function toggleColor(idx) {
@@ -1043,6 +1205,7 @@ function toggleColor(idx) {
     selectedColors.push(idx);
     el.classList.add('selected');
   }
+  scheduleDraftSave();
 }
 
 function toggleMood(id) {
@@ -1054,6 +1217,7 @@ function toggleMood(id) {
     selectedMoods.push(id);
     el.classList.add('selected');
   }
+  scheduleDraftSave();
 }
 
 function switchTab(tab) {
@@ -1150,6 +1314,7 @@ JSON 외의 다른 텍스트는 출력하지 마세요.` }
       const el = document.getElementById('obs-' + k);
       if (el && obs[k]) el.value = obs[k];
     });
+    scheduleDraftSave();
     showToast('✅ 분석 완료! 내용은 직접 고쳐도 돼요');
   } catch(e) {
     console.error(e);
@@ -1177,6 +1342,7 @@ async function translatePrompt() {
       const box = document.getElementById('translated-box');
       box.textContent = text.trim();
       box.style.display = 'block';
+      scheduleDraftSave();
       showToast('✅ 번역 완료!');
     }
   } catch(e) {
@@ -1312,6 +1478,7 @@ async function addSceneToShow() {
     segments: selectedSegments,
     emotion: currentEmotionLabel(),
     musicMood: currentMusicMoodLabel(),
+    studentNumber: STUDENT_NUMBER || null,
   };
 
   if (firebaseReady && SESSION_CODE) {
@@ -1372,7 +1539,7 @@ function renderSceneList() {
     <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:10px;padding:8px 12px">
       <img src="${s.imageUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}</div>
+        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}${s.studentNumber?` <span style="color:var(--text2);font-weight:400">· ${s.studentNumber}번</span>`:''}</div>
         <div style="font-size:11px;color:var(--text2)">${s.characters || '참여자 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''}</div>
       </div>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="removeScene(${i})">✕</button>
@@ -1423,26 +1590,62 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function openNewspaper() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
-  document.getElementById('np-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  if (pendingNewspaperData) {
+    document.getElementById('np-title').value = pendingNewspaperData.title || '음악 감상 신문';
+    document.getElementById('np-school').value = pendingNewspaperData.school || '';
+    document.getElementById('np-date').value = pendingNewspaperData.date || (now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일');
+    document.getElementById('np-grade').value = pendingNewspaperData.grade || '';
+    document.getElementById('np-headline').value = pendingNewspaperData.headline || '';
+    document.getElementById('np-layout').value = pendingNewspaperData.layout || 'col2';
+  } else {
+    document.getElementById('np-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  }
   buildNpGrid();
+  updateNpLayout();
   document.getElementById('newspaper-modal').classList.add('open');
+  attachNewspaperAutosave();
   logToSheet('음악신문열기', document.getElementById('np-title')?.value||'음악 감상 신문', collectedScenes.length+'개 장면');
 }
 function buildNpGrid() {
   const grid = document.getElementById('np-grid');
+  const savedArticles = (pendingNewspaperData && pendingNewspaperData.articles) || [];
   grid.innerHTML = collectedScenes.map((s, i) => `
     <div class="np-article">
-      <input class="np-input np-article-title" value="장면 ${i+1} — ${s.title||''}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
+      <input class="np-input np-article-title" value="${savedArticles[i]?.title ?? `장면 ${i+1} — ${s.title||''}`}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
       <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
       <div class="field-hint">💡 이렇게 써보세요: 이 장면에서 어떤 음악 요소(리듬·선율·음색 등)가 들렸는지, 왜 이 그림을 골랐는지, 이 장면이 나타내는 감정은 무엇인지</div>
       <div class="np-caption">
-        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="음악을 들으며 느낀 점을 자세히 적어보세요...">${[s.description, s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="음악을 들으며 느낀 점을 자세히 적어보세요...">${savedArticles[i]?.caption ?? [s.description, s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
       </div>
     </div>
   `).join('');
 }
 function updateNpLayout() {
   document.getElementById('np-grid').className = 'np-grid ' + document.getElementById('np-layout').value;
+  scheduleNewspaperSave();
+}
+let npSaveTimer = null;
+function collectNewspaperData(){
+  const articles = Array.from(document.querySelectorAll('#np-grid .np-article')).map(art => ({
+    title: art.querySelector('.np-article-title')?.value || '',
+    caption: art.querySelector('textarea')?.value || '',
+  }));
+  return {
+    title: document.getElementById('np-title')?.value || '',
+    school: document.getElementById('np-school')?.value || '',
+    date: document.getElementById('np-date')?.value || '',
+    grade: document.getElementById('np-grade')?.value || '',
+    headline: document.getElementById('np-headline')?.value || '',
+    layout: document.getElementById('np-layout')?.value || 'col2',
+    articles,
+  };
+}
+function scheduleNewspaperSave(){
+  clearTimeout(npSaveTimer);
+  npSaveTimer = setTimeout(() => { pendingNewspaperData = collectNewspaperData(); saveModalData('newspaper', pendingNewspaperData); }, 1000);
+}
+function attachNewspaperAutosave(){
+  document.getElementById('np-paper').addEventListener('input', scheduleNewspaperSave);
 }
 
 function populateLetterSceneSelect() {
@@ -1460,13 +1663,42 @@ function fillLetterFromScene(idx) {
   document.getElementById('letter-song').value = s.title || '';
   if (!document.getElementById('letter-body').value) document.getElementById('letter-body').value = s.lyrics || '';
 }
+let letterSaveTimer = null;
+function collectLetterData(){
+  return {
+    date: document.getElementById('letter-date')?.value || '',
+    to: document.getElementById('letter-to')?.value || '',
+    song: document.getElementById('letter-song')?.value || '',
+    body: document.getElementById('letter-body')?.value || '',
+    from: document.getElementById('letter-from')?.value || '',
+    sceneIndex: Number(document.getElementById('letter-scene-select')?.value || 0),
+  };
+}
+function scheduleLetterSave(){
+  clearTimeout(letterSaveTimer);
+  letterSaveTimer = setTimeout(() => { pendingLetterData = collectLetterData(); saveModalData('letter', pendingLetterData); }, 1000);
+}
 function openLetter() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
-  document.getElementById('letter-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
   populateLetterSceneSelect();
-  fillLetterFromScene(collectedScenes.length - 1);
+  if (pendingLetterData) {
+    document.getElementById('letter-date').value = pendingLetterData.date || '';
+    document.getElementById('letter-to').value = pendingLetterData.to || '';
+    document.getElementById('letter-song').value = pendingLetterData.song || '';
+    document.getElementById('letter-body').value = pendingLetterData.body || '';
+    document.getElementById('letter-from').value = pendingLetterData.from || '';
+    if (pendingLetterData.sceneIndex !== undefined) {
+      document.getElementById('letter-scene-select').value = pendingLetterData.sceneIndex;
+      const s = collectedScenes[pendingLetterData.sceneIndex];
+      if (s) document.getElementById('letter-img').src = s.imageUrl;
+    }
+  } else {
+    document.getElementById('letter-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+    fillLetterFromScene(collectedScenes.length - 1);
+  }
   document.getElementById('letter-modal').classList.add('open');
+  document.getElementById('letter-paper').addEventListener('input', scheduleLetterSave);
   logToSheet('음악편지열기', collectedScenes[collectedScenes.length-1]?.title||'', '');
 }
 
@@ -1478,15 +1710,43 @@ const defaultQuestions = [
   '이 음악을 누구에게, 어떤 상황에서 들려주고 싶나요?',
   '이 음악을 통해 새롭게 알게 된 것이 있다면 무엇인가요?',
 ];
+let interviewSaveTimer = null;
+function collectInterviewData(){
+  const questions = Array.from(document.querySelectorAll('#qa-section .qa-q')).map(el => el.textContent.replace(/^Q\d+\.\s*/,''));
+  const answers = Array.from(document.querySelectorAll('#qa-section .qa-textarea')).map(el => el.value);
+  return {
+    subtitle: document.getElementById('interview-subtitle')?.value || '',
+    song: document.getElementById('interview-song')?.value || '',
+    date: document.getElementById('interview-date')?.value || '',
+    questions, answers,
+  };
+}
+function scheduleInterviewSave(){
+  clearTimeout(interviewSaveTimer);
+  interviewSaveTimer = setTimeout(() => { pendingInterviewData = collectInterviewData(); saveModalData('interview', pendingInterviewData); }, 1000);
+}
 function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const s = collectedScenes[collectedScenes.length - 1];
   document.getElementById('interview-img').src = s.imageUrl;
-  document.getElementById('interview-song').value = s.title || '';
   const now = new Date();
-  document.getElementById('interview-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
-  buildQASection(defaultQuestions);
+  if (pendingInterviewData) {
+    document.getElementById('interview-subtitle').value = pendingInterviewData.subtitle || '';
+    document.getElementById('interview-song').value = pendingInterviewData.song || s.title || '';
+    document.getElementById('interview-date').value = pendingInterviewData.date || (now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일');
+    const qs = (pendingInterviewData.questions && pendingInterviewData.questions.length) ? pendingInterviewData.questions : defaultQuestions;
+    buildQASection(qs);
+    (pendingInterviewData.answers || []).forEach((a, i) => {
+      const els = document.querySelectorAll('#qa-section .qa-textarea');
+      if (els[i]) els[i].value = a;
+    });
+  } else {
+    document.getElementById('interview-song').value = s.title || '';
+    document.getElementById('interview-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+    buildQASection(defaultQuestions);
+  }
   document.getElementById('interview-modal').classList.add('open');
+  document.getElementById('interview-paper').addEventListener('input', scheduleInterviewSave);
   logToSheet('음악인터뷰열기', s.title||'', '');
 }
 function buildQASection(questions) {
@@ -1513,7 +1773,7 @@ async function generateInterviewQ() {
     const data = await resp.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const questions = text.split('\n').map(q=>q.trim()).filter(q=>q.length>5).slice(0,6);
-    if (questions.length > 0) { buildQASection(questions); showToast('✅ AI 질문 생성 완료!'); }
+    if (questions.length > 0) { buildQASection(questions); scheduleInterviewSave(); showToast('✅ AI 질문 생성 완료!'); }
     else { showToast('⚠️ 질문 생성 실패, 기본 질문으로 표시해요'); buildQASection(defaultQuestions); }
   } catch(e) {
     showToast('⚠️ AI 연결 실패, 기본 질문으로 표시해요');
