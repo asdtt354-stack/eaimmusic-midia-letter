@@ -305,6 +305,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div style="font-size:2.8rem;margin-bottom:12px">🎨</div>
     <h2>미디어픽쳐</h2>
     <p>음악을 듣고 · 느끼고 · 그림으로 표현하다</p>
+    <div id="studentRoomName" style="font-size:.8rem;color:var(--accent3);margin-bottom:10px;font-weight:700"></div>
     <div class="locked-notice" id="lockedNotice" style="display:none">🔒 선생님이 아직 수업을 열지 않았어요</div>
     <input type="text" id="studentNumberInput" placeholder="내 번호 (예: 7)" inputmode="numeric" onkeydown="if(event.key==='Enter')doStudentLogin()">
     <button class="btn btn-primary" id="studentLoginBtn" style="width:100%;padding:13px" onclick="doStudentLogin()">🎨 시작하기</button>
@@ -322,7 +323,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="dash-tab-bar">
     <button class="dash-tab on" id="dashTabSettings" onclick="setDashTab('settings')">⚙️ 설정</button>
-    <button class="dash-tab" id="dashTabStudents" onclick="setDashTab('students')">📋 학생현황<span class="badge-count" id="studentCountBadge" style="display:none"></span></button>
+    <button class="dash-tab" id="dashTabRooms" onclick="setDashTab('rooms')">🏫 반 관리<span class="badge-count" id="roomCountBadge" style="display:none"></span></button>
   </div>
   <div class="dash-main"><div id="dashContent"></div></div>
 </div>
@@ -741,14 +742,17 @@ try {
 
 const teacherDocRef  = (uid) => db.collection('teachers').doc(uid);
 const settingsDocRef = (uid) => teacherDocRef(uid).collection('meta').doc('settings');
-const scenesColRef   = (uid) => teacherDocRef(uid).collection('scenes');
-const studentsColRef = (uid) => teacherDocRef(uid).collection('students');
+const roomsColRef    = (uid) => teacherDocRef(uid).collection('rooms');
+const roomDocRef     = (uid, rId) => roomsColRef(uid).doc(rId);
+const scenesColRef   = (uid, rId) => roomDocRef(uid, rId).collection('scenes');
+const studentsColRef = (uid, rId) => roomDocRef(uid, rId).collection('students');
 
 let authLoaded=false, currentUser=null, teacherUid=null, isStudentMode=false;
+let roomId=null, currentRoom={ name:'', classOn:false };
 let dashTab='settings';
-let settings = { apiKey:'', classOn:false, sheetUrl:'' };
-let dashStudents=[];
-let unsubSettings=null, unsubScenes=null, unsubStudents=null;
+let settings = { apiKey:'', sheetUrl:'' };
+let dashRooms=[], dashStudents=[], expandedRoomId=null;
+let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null;
 
 // GEMINI_KEY / SHEET_URL는 settings와 동기화되는 미러 변수 (기존 함수들이 그대로 참조)
 let GEMINI_KEY = '';
@@ -759,7 +763,7 @@ let studentAutosaveEnabled = false;
 let studentDraftTimer = null;
 
 function studentDocRef(){
-  return studentsColRef(teacherUid).doc(STUDENT_NUMBER);
+  return studentsColRef(teacherUid, roomId).doc(STUDENT_NUMBER);
 }
 
 // ══════════════════════════
@@ -781,8 +785,10 @@ function renderTeacherGoogleGate(err){
 function renderStudentLoginGate(){
   hideAllOverlays();
   document.getElementById('studentLoginOverlay').style.display='flex';
-  document.getElementById('lockedNotice').style.display = settings.classOn? 'none':'block';
-  document.getElementById('studentLoginBtn').disabled = !settings.classOn;
+  document.getElementById('lockedNotice').style.display = currentRoom.classOn? 'none':'block';
+  document.getElementById('studentLoginBtn').disabled = !currentRoom.classOn;
+  const roomNameEl = document.getElementById('studentRoomName');
+  if(roomNameEl) roomNameEl.textContent = currentRoom.name ? ('🏫 '+currentRoom.name) : '';
 }
 function enterMainApp(){
   hideAllOverlays();
@@ -791,7 +797,7 @@ function enterMainApp(){
 function enterTeacherDashboard(){
   hideAllOverlays();
   document.getElementById('teacherDashboardPage').style.display='block';
-  subscribeStudentsForDash(teacherUid);
+  subscribeRooms(teacherUid);
   renderDashContent();
 }
 
@@ -801,7 +807,7 @@ function enterTeacherDashboard(){
 function subscribeSettings(uid, cb){
   if(unsubSettings) unsubSettings();
   unsubSettings = settingsDocRef(uid).onSnapshot(snap=>{
-    settings = snap.exists ? snap.data() : {apiKey:'', classOn:false, sheetUrl:''};
+    settings = snap.exists ? snap.data() : {apiKey:'', sheetUrl:''};
     GEMINI_KEY = settings.apiKey || '';
     SHEET_URL = settings.sheetUrl || '';
     cb && cb();
@@ -815,6 +821,73 @@ function setSettings(uid, fields){
 }
 
 // ══════════════════════════
+// 🏫 반(room) 관리
+// ══════════════════════════
+function subscribeRooms(uid){
+  if(unsubRooms) unsubRooms();
+  unsubRooms = roomsColRef(uid).orderBy('createdAt','asc').onSnapshot(snap=>{
+    dashRooms = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(dashTab==='rooms') renderDashContent();
+  }, err=>console.warn('반 목록 동기화 오류', err));
+}
+function subscribeRoom(uid, rId, cb){
+  if(unsubRoom) unsubRoom();
+  unsubRoom = roomDocRef(uid, rId).onSnapshot(snap=>{
+    currentRoom = snap.exists ? snap.data() : { name:'', classOn:false };
+    cb && cb();
+  }, err=>{ console.warn('반 정보 동기화 오류', err); cb && cb(); });
+}
+async function addRoomUI(){
+  const input = document.getElementById('newRoomName');
+  const name = input.value.trim();
+  if(!name){ alert('반 이름을 입력하세요!'); return; }
+  try{
+    await roomsColRef(teacherUid).add({ name, classOn:false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    input.value='';
+  }catch(e){ showToast('❌ 저장 실패: '+e.message); }
+}
+async function deleteRoomUI(rId){
+  if(!confirm('이 반을 삭제할까요? 이 반에 모인 장면과 학생 기록도 함께 삭제돼요.')) return;
+  try{
+    const scenesSnap = await scenesColRef(teacherUid, rId).get();
+    const studentsSnap = await studentsColRef(teacherUid, rId).get();
+    const batch = db.batch();
+    scenesSnap.docs.forEach(d=>batch.delete(d.ref));
+    studentsSnap.docs.forEach(d=>batch.delete(d.ref));
+    batch.delete(roomDocRef(teacherUid, rId));
+    await batch.commit();
+    if(expandedRoomId===rId) expandedRoomId=null;
+  }catch(e){ showToast('❌ 삭제 실패: '+e.message); }
+}
+function toggleRoomClass(rId, current){
+  roomDocRef(teacherUid, rId).set({classOn: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
+}
+function toggleRoomExpand(rId){
+  expandedRoomId = expandedRoomId===rId ? null : rId;
+  if(expandedRoomId){ subscribeStudentsForRoom(teacherUid, expandedRoomId); }
+  else if(unsubStudents){ unsubStudents(); unsubStudents=null; }
+  renderDashContent();
+}
+function subscribeStudentsForRoom(uid, rId){
+  if(unsubStudents) unsubStudents();
+  unsubStudents = studentsColRef(uid, rId).onSnapshot(snap=>{
+    dashStudents = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(dashTab==='rooms' && expandedRoomId===rId) renderDashContent();
+  }, err=>console.warn('학생현황 동기화 오류', err));
+}
+function copyRoomInvite(rId){
+  const url = `${location.origin}${location.pathname}?role=student&teacher=${teacherUid}&room=${rId}`;
+  navigator.clipboard.writeText(url).then(()=>showToast('✅ 초대 링크 복사됨!'));
+}
+function generateRoomQR(rId){
+  const url = `${location.origin}${location.pathname}?role=student&teacher=${teacherUid}&room=${rId}`;
+  const el=document.getElementById('roomQr-'+rId); if(!el) return;
+  el.innerHTML='';
+  if(typeof QRCode==='undefined'){ el.textContent='QR 로딩 실패'; return; }
+  new QRCode(el, { text:url, width:120, height:120, colorDark:'#0a0a0f', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M });
+}
+
+// ══════════════════════════
 // 구글 로그인 (교사)
 // ══════════════════════════
 function googleLogin(){
@@ -825,13 +898,13 @@ function googleLogin(){
 }
 function teacherLogout(){
   if(unsubSettings){unsubSettings();unsubSettings=null;}
-  if(unsubStudents){unsubStudents();unsubStudents=null;}
+  if(unsubRooms){unsubRooms();unsubRooms=null;}
   auth.signOut();
   teacherUid=null;
   renderTeacherGoogleGate();
 }
 function studentLogout(){
-  if(unsubSettings){unsubSettings();unsubSettings=null;}
+  if(unsubRoom){unsubRoom();unsubRoom=null;}
   if(unsubScenes){unsubScenes();unsubScenes=null;}
   STUDENT_NUMBER=''; studentAutosaveEnabled=false;
   renderStudentLoginGate();
@@ -842,7 +915,7 @@ function studentLogout(){
 // ══════════════════════════
 async function doStudentLogin(){
   const num = document.getElementById('studentNumberInput').value.trim();
-  if(!settings.classOn){ showToast('⚠️ 선생님이 아직 수업을 열지 않았어요'); return; }
+  if(!currentRoom.classOn){ showToast('⚠️ 선생님이 아직 수업을 열지 않았어요'); return; }
   if(!num){ showToast('⚠️ 번호를 입력해주세요'); return; }
   STUDENT_NUMBER = num;
   enterMainApp();
@@ -872,76 +945,83 @@ async function doStudentLogin(){
 // ══════════════════════════
 function setDashTab(tab){ dashTab=tab;
   document.getElementById('dashTabSettings').classList.toggle('on', tab==='settings');
-  document.getElementById('dashTabStudents').classList.toggle('on', tab==='students');
+  document.getElementById('dashTabRooms').classList.toggle('on', tab==='rooms');
   renderDashContent();
 }
 function renderDashContent(){
   const el=document.getElementById('dashContent'); if(!el) return;
+  const badge = document.getElementById('roomCountBadge');
+  if(badge){ badge.style.display = dashRooms.length? 'inline-block':'none'; badge.textContent = dashRooms.length; }
+
   if(dashTab==='settings'){
-    const inviteUrl = `${location.origin}${location.pathname}?role=student&teacher=${teacherUid||''}`;
     el.innerHTML = `
     <div class="teacher-chip">
       <img class="teacher-avatar" src="${currentUser?.photoURL||''}" onerror="this.style.display='none'">
       <div style="font-size:.8rem;color:var(--text)">${currentUser?.displayName||''} · ${currentUser?.email||''}</div>
     </div>
-    <div class="dash-card"><div class="dash-card-title">🎓 수업 상태</div>
-      <div class="toggle-row"><div><div style="font-weight:700;font-size:.95rem">${settings.classOn?'수업 진행 중':'수업 종료'}</div>
-        <div style="font-size:.72rem;color:var(--text2);margin-top:3px">${settings.classOn?'학생들이 접속할 수 있어요':'학생 접속이 차단됩니다'}</div></div>
-        <div class="toggle-track ${settings.classOn?'on':''}" onclick="toggleClass()"><div class="toggle-thumb"></div></div>
-      </div>
-      <div style="font-size:.7rem;color:var(--text2);margin-top:12px;letter-spacing:.1em;text-transform:uppercase">학생 초대 링크</div>
-      <div class="invite-box">${inviteUrl}</div>
-      <button class="btn btn-secondary" style="margin-top:8px" onclick="copyInvite('${inviteUrl}')">🔗 링크 복사</button>
-      <div><div class="invite-qr-box" id="inviteQr"></div>
-        <div class="invite-qr-caption">📱 학생들이 이 QR을 스캔하면 바로 접속돼요</div>
-      </div>
-    </div>
     <div class="dash-card"><div class="dash-card-title">🔑 Gemini API 키</div>
       <input class="dash-input" type="password" id="apiKeyInput" value="${settings.apiKey||''}" placeholder="AIzaSy... (학생에게 노출되지 않아요)" oninput="saveApiKeyDash(this.value)">
       ${settings.apiKey?`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#4CAF82;margin-top:6px"><span class="api-dot dot-on"></span>API 키 저장됨</div>`:''}
+      <div style="font-size:.7rem;color:var(--text2);margin-top:8px">모든 반이 이 키를 함께 써요 (반마다 따로 입력할 필요 없어요)</div>
     </div>
     <div class="dash-card"><div class="dash-card-title">📊 구글시트 연동 (선택)</div>
       <input class="dash-input" type="text" id="sheetUrlInput" value="${settings.sheetUrl||''}" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveSheetUrlDash(this.value)">
     </div>
     <div style="background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:16px;padding:16px;font-size:.78rem;color:var(--text2);line-height:1.9">
-      💡 <strong style="color:var(--text)">사용 순서</strong><br>1. API 키 입력 → 2. 수업 ON → 3. 초대 링크 공유<br>학생들은 번호만 입력하면 바로 활동을 시작할 수 있어요.</div>`;
-    generateInviteQR(inviteUrl);
+      💡 <strong style="color:var(--text)">사용 순서</strong><br>1. API 키 입력 → 2. "🏫 반 관리" 탭에서 반 만들기 → 3. 반마다 수업 ON + 초대 링크 공유</div>`;
   } else {
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:.75rem;color:var(--text2)">총 ${dashStudents.length}명 참여</div>
-      ${dashStudents.length?`<button class="btn btn-secondary" style="padding:6px 12px;font-size:.75rem;background:rgba(255,107,157,.15);color:var(--accent2)" onclick="resetStudentsDash()">🗑️ 초기화</button>`:''}
-    </div>
-    ${dashStudents.length===0? '<div class="dash-card" style="text-align:center;padding:40px 20px;color:var(--text2)">아직 참여한 학생이 없어요 🎨</div>' :
-      '<div class="dash-card">'+dashStudents.slice().sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)).map(s=>`
-        <div class="student-row"><strong>${s.id}번</strong>
-          <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
-        </div>`).join('')+'</div>'}`;
+    const newRoomForm = `
+    <div class="dash-card">
+      <div class="dash-card-title">➕ 새 반 만들기</div>
+      <div style="display:flex;gap:8px">
+        <input class="dash-input" id="newRoomName" placeholder="예: 1반, 3학년 2반, 체육고 3학년" style="flex:1">
+        <button class="btn btn-primary" onclick="addRoomUI()" style="flex-shrink:0">추가</button>
+      </div>
+    </div>`;
+
+    if(dashRooms.length===0){
+      el.innerHTML = newRoomForm + '<div class="dash-card" style="text-align:center;padding:40px 20px;color:var(--text2)">아직 만든 반이 없어요 🏫</div>';
+      return;
+    }
+
+    const roomCards = dashRooms.map(r=>{
+      const inviteUrl = `${location.origin}${location.pathname}?role=student&teacher=${teacherUid}&room=${r.id}`;
+      const isOpen = expandedRoomId === r.id;
+      return `
+      <div class="dash-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="font-weight:700;font-size:1rem">🏫 ${r.name}</div>
+          <div class="toggle-track ${r.classOn?'on':''}" onclick="toggleRoomClass('${r.id}', ${!!r.classOn})"><div class="toggle-thumb"></div></div>
+        </div>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${r.classOn?'수업 진행 중 · 학생 접속 가능':'수업 종료 · 학생 접속 차단'}</div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="toggleRoomExpand('${r.id}')">${isOpen?'▲ 접기':'👥 학생현황 · 초대 QR'}</button>
+          <button class="btn btn-secondary" style="background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteRoomUI('${r.id}')">🗑️ 삭제</button>
+        </div>
+        ${isOpen ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:.7rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">초대 링크</div>
+          <div class="invite-box">${inviteUrl}</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary" onclick="copyRoomInvite('${r.id}')">🔗 링크 복사</button>
+            <div><div class="invite-qr-box" id="roomQr-${r.id}"></div></div>
+          </div>
+          <div style="font-size:.7rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 6px">참여 학생 (${dashStudents.length}명)</div>
+          ${dashStudents.length===0 ? '<div style="font-size:.8rem;color:var(--text2)">아직 참여한 학생이 없어요</div>' :
+            dashStudents.slice().sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)).map(s=>`
+              <div class="student-row"><strong>${s.id}번</strong>
+                <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
+              </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+    el.innerHTML = newRoomForm + roomCards;
+    dashRooms.forEach(r=>{ if(expandedRoomId===r.id) generateRoomQR(r.id); });
   }
 }
-function toggleClass(){ setSettings(teacherUid, {classOn: !settings.classOn}); renderDashContent(); }
 function saveApiKeyDash(v){ setSettings(teacherUid, {apiKey: v}); }
 function saveSheetUrlDash(v){ setSettings(teacherUid, {sheetUrl: v}); }
-function copyInvite(url){ navigator.clipboard.writeText(url).then(()=>showToast('✅ 초대 링크 복사됨!')); }
-function generateInviteQR(url){
-  const el=document.getElementById('inviteQr'); if(!el) return;
-  el.innerHTML='';
-  if(typeof QRCode==='undefined'){ el.textContent='QR 로딩 실패'; return; }
-  new QRCode(el, { text:url, width:140, height:140, colorDark:'#0a0a0f', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M });
-}
-function subscribeStudentsForDash(uid){
-  if(unsubStudents) unsubStudents();
-  unsubStudents = studentsColRef(uid).onSnapshot(snap=>{
-    dashStudents = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    const badge=document.getElementById('studentCountBadge');
-    if(badge){ badge.style.display=dashStudents.length?'inline-block':'none'; badge.textContent=dashStudents.length; }
-    if(dashTab==='students') renderDashContent();
-  }, err=>console.warn('학생현황 동기화 오류', err));
-}
-async function resetStudentsDash(){
-  if(!confirm('모든 학생 활동 기록을 초기화할까요?')) return;
-  try{ const snap=await studentsColRef(teacherUid).get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
-  catch(e){ showToast('❌ 초기화 실패: '+e.message); }
-}
 
 // ══════════════════════════
 // 👤 학생 진행상황 자동저장/이어하기
@@ -1008,7 +1088,7 @@ function applyDraftData(d){
 function setStudentSaveStatus(msg){ /* 상태 표시 UI는 대시보드로 이전됨 — 콘솔에만 남김 */ console.log('[autosave]', msg); }
 
 function scheduleDraftSave(){
-  if (!studentAutosaveEnabled || !firebaseReady || !teacherUid || !STUDENT_NUMBER) return;
+  if (!studentAutosaveEnabled || !firebaseReady || !teacherUid || !roomId || !STUDENT_NUMBER) return;
   clearTimeout(studentDraftTimer);
   studentDraftTimer = setTimeout(async () => {
     try {
@@ -1018,7 +1098,7 @@ function scheduleDraftSave(){
 }
 
 async function saveModalData(key, data){
-  if (!studentAutosaveEnabled || !firebaseReady || !teacherUid || !STUDENT_NUMBER) return;
+  if (!studentAutosaveEnabled || !firebaseReady || !teacherUid || !roomId || !STUDENT_NUMBER) return;
   try {
     await studentDocRef().set({ [key]: data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
   } catch(e) { console.warn('모달 저장 실패', e); }
@@ -1044,9 +1124,9 @@ function logToSheet(activity, title, detail){
 }
 
 function subscribeScenes() {
-  if (!firebaseReady || !teacherUid) return;
+  if (!firebaseReady || !teacherUid || !roomId) return;
   if (unsubScenes) unsubScenes();
-  unsubScenes = scenesColRef(teacherUid)
+  unsubScenes = scenesColRef(teacherUid, roomId)
     .orderBy('createdAt', 'asc')
     .onSnapshot(snap => {
       collectedScenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1592,11 +1672,11 @@ async function addSceneToShow() {
     studentNumber: STUDENT_NUMBER || null,
   };
 
-  if (firebaseReady && teacherUid) {
+  if (firebaseReady && teacherUid && roomId) {
     try {
       showToast('⏳ 학급 공유용으로 이미지 크기를 줄이는 중...');
       const compactImage = await compressImageForCloud(finalVisual);
-      await scenesColRef(teacherUid)
+      await scenesColRef(teacherUid, roomId)
         .add({ ...scene, imageUrl: compactImage, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       showToast('✅ 우리 반에 장면이 공유됐어요!');
     } catch(e) {
@@ -1644,9 +1724,9 @@ function renderSceneList() {
 
 async function removeScene(idx) {
   const scene = collectedScenes[idx];
-  if (firebaseReady && teacherUid && scene && scene.id) {
+  if (firebaseReady && teacherUid && roomId && scene && scene.id) {
     try {
-      await scenesColRef(teacherUid).doc(scene.id).delete();
+      await scenesColRef(teacherUid, roomId).doc(scene.id).delete();
     } catch(e) { showToast('❌ 삭제 실패'); return; }
   }
   showToast('🗑 장면을 삭제했어요');
@@ -1654,9 +1734,9 @@ async function removeScene(idx) {
 
 async function clearScenes() {
   if (!confirm('모아둔 장면을 모두 지울까요?')) return;
-  if (firebaseReady && teacherUid) {
+  if (firebaseReady && teacherUid && roomId) {
     try {
-      const snap = await scenesColRef(teacherUid).get();
+      const snap = await scenesColRef(teacherUid, roomId).get();
       const batch = db.batch();
       snap.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
@@ -1893,6 +1973,7 @@ function showToast(msg) {
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const teacherParam = params.get('teacher');
+  const roomParam = params.get('room');
 
   if(!firebaseReady){
     document.getElementById('loadingOverlay').textContent = '⚠️ Firebase 설정이 필요해요';
@@ -1901,9 +1982,11 @@ function showToast(msg) {
 
   if(role === 'student'){
     isStudentMode = true;
-    if(!teacherParam){ renderNoTeacherLink(); return; }
+    if(!teacherParam || !roomParam){ renderNoTeacherLink(); return; }
     teacherUid = teacherParam;
-    subscribeSettings(teacherUid, ()=>{ renderStudentLoginGate(); });
+    roomId = roomParam;
+    subscribeSettings(teacherUid, ()=>{});
+    subscribeRoom(teacherUid, roomId, ()=>{ renderStudentLoginGate(); });
     return;
   }
 
