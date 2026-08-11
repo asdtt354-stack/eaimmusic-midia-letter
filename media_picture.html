@@ -594,7 +594,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <option value="col2" selected>2단 레이아웃</option>
       <option value="col3">3단 레이아웃</option>
     </select>
-    <button class="np-print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+    <button class="np-print-btn" onclick="finalizeNewspaper()">🖨️ 인쇄 / PDF 저장</button>
   </div>
   <div class="np-paper" id="np-paper">
     <div class="np-masthead">
@@ -615,7 +615,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <button onclick="closeModal('letter-modal')" style="background:rgba(255,255,255,.2);color:#fff">✕ 닫기</button>
     <span style="flex:1;font-size:14px;font-weight:bold">💌 음악 편지</span>
     <select class="letter-scene-select" id="letter-scene-select" onchange="onLetterSceneChange()"></select>
-    <button onclick="window.print()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
+    <button onclick="finalizeLetter()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
   </div>
   <div class="letter-paper" id="letter-paper">
     <div class="letter-date">
@@ -647,7 +647,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <button onclick="closeModal('interview-modal')" style="background:rgba(255,255,255,.1);color:#fff">✕ 닫기</button>
     <span style="flex:1;font-size:14px;font-weight:bold;color:#fff">🎤 음악 인터뷰</span>
     <button onclick="generateInterviewQ()" style="background:#7C4DFF;color:#fff">✨ AI 질문 생성</button>
-    <button onclick="window.print()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
+    <button onclick="finalizeInterview()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
   </div>
   <div class="interview-paper" id="interview-paper">
     <div class="interview-header">
@@ -666,6 +666,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <span>EAIM 음악 감상 인터뷰</span>
       <input style="border:none;border-bottom:1px dashed #ccc;background:transparent;font-family:inherit;font-size:12px;outline:none;color:#555;text-align:right;width:150px" id="interview-date" placeholder="날짜">
     </div>
+  </div>
+</div>
+
+<div id="report-modal" style="display:none;position:fixed;inset:0;background:rgba(10,10,15,.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:600px;width:100%;padding:24px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:1rem;color:var(--accent)">📋 세특 문구 (<span id="report-student-label"></span>)</div>
+      <button class="dash-logout" onclick="closeReportModal()">✕ 닫기</button>
+    </div>
+    <textarea id="report-textarea" class="dash-input" style="min-height:180px;line-height:1.8;resize:vertical"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="copyReportText()">📋 복사하기</button>
+      <button class="btn btn-secondary" onclick="regenerateReport()">🔄 다시 생성</button>
+    </div>
+    <div style="font-size:.7rem;color:var(--text2);margin-top:10px;line-height:1.6">💡 이 학생이 남긴 장면·신문·편지·인터뷰 기록을 모두 모아 AI가 초안을 만들어요. 내용을 검토하고 필요한 부분은 직접 고쳐서 사용하세요.</div>
   </div>
 </div>
 
@@ -841,9 +856,25 @@ async function addRoomUI(){
   const input = document.getElementById('newRoomName');
   const name = input.value.trim();
   if(!name){ alert('반 이름을 입력하세요!'); return; }
+  const groupCountInput = document.getElementById('newRoomGroupCount');
+  let groupCount = parseInt(groupCountInput?.value, 10);
+  if(!groupCount || groupCount < 1) groupCount = 1;
+  if(groupCount > 30) groupCount = 30;
   try{
-    await roomsColRef(teacherUid).add({ name, classOn:false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    if(groupCount === 1){
+      await roomsColRef(teacherUid).add({ name, classOn:false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    } else {
+      for(let i=1;i<=groupCount;i++){
+        await roomsColRef(teacherUid).add({
+          name: `${name} ${i}모둠`,
+          classOn:false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
     input.value='';
+    if(groupCountInput) groupCountInput.value='1';
+    showToast(groupCount>1 ? `✅ ${groupCount}개 모둠 반이 만들어졌어요!` : '✅ 반이 만들어졌어요!');
   }catch(e){ showToast('❌ 저장 실패: '+e.message); }
 }
 async function deleteRoomUI(rId){
@@ -973,8 +1004,12 @@ function renderDashContent(){
     const newRoomForm = `
     <div class="dash-card">
       <div class="dash-card-title">➕ 새 반 만들기</div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
         <input class="dash-input" id="newRoomName" placeholder="예: 1반, 3학년 2반, 체육고 3학년" style="flex:1">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="dash-input" id="newRoomGroupCount" type="number" min="1" max="30" value="1" placeholder="모둠 수" style="width:90px;flex-shrink:0">
+        <span style="font-size:.72rem;color:var(--text2);flex:1;min-width:160px">모둠 수를 2 이상 입력하면 "이름 1모둠, 2모둠..."으로 여러 반이 한 번에 만들어져요</span>
         <button class="btn btn-primary" onclick="addRoomUI()" style="flex-shrink:0">추가</button>
       </div>
     </div>`;
@@ -1009,8 +1044,12 @@ function renderDashContent(){
           <div style="font-size:.7rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 6px">참여 학생 (${dashStudents.length}명)</div>
           ${dashStudents.length===0 ? '<div style="font-size:.8rem;color:var(--text2)">아직 참여한 학생이 없어요</div>' :
             dashStudents.slice().sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)).map(s=>`
-              <div class="student-row"><strong>${s.id}번</strong>
-                <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
+              <div class="student-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="min-width:0">
+                  <strong>${s.id}번</strong>
+                  <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
+                </div>
+                <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;flex-shrink:0" onclick="openStudentReport('${r.id}','${s.id}')">📋 세특</button>
               </div>`).join('')}
         </div>` : ''}
       </div>`;
@@ -1022,6 +1061,85 @@ function renderDashContent(){
 }
 function saveApiKeyDash(v){ setSettings(teacherUid, {apiKey: v}); }
 function saveSheetUrlDash(v){ setSettings(teacherUid, {sheetUrl: v}); }
+
+// ══════════════════════════
+// 📋 학생별 종합 세특 문구 생성 (교사 대시보드)
+// ══════════════════════════
+let reportContext = { studentId:null, roomId:null };
+
+function closeReportModal(){ document.getElementById('report-modal').style.display='none'; }
+
+async function copyReportText(){
+  const text = document.getElementById('report-textarea').value.trim();
+  if(!text){ showToast('⚠️ 먼저 생성해주세요'); return; }
+  navigator.clipboard.writeText(text)
+    .then(()=>showToast('📋 복사했어요!'))
+    .catch(()=>showToast('⚠️ 자동 복사 실패 — 직접 선택해서 복사해주세요'));
+}
+
+async function openStudentReport(rId, studentId){
+  if(!GEMINI_KEY){ showToast('⚠️ 먼저 설정 탭에서 API 키를 입력해주세요'); return; }
+  reportContext = { studentId, roomId: rId };
+  document.getElementById('report-student-label').textContent = studentId+'번';
+  document.getElementById('report-textarea').value = '생성 중...';
+  document.getElementById('report-modal').style.display='flex';
+  await regenerateReport();
+}
+
+async function regenerateReport(){
+  const { studentId, roomId } = reportContext;
+  if(!studentId || !roomId) return;
+  const ta = document.getElementById('report-textarea');
+  ta.value = '생성 중...';
+  try{
+    const [studentDoc, scenesSnap] = await Promise.all([
+      studentsColRef(teacherUid, roomId).doc(studentId).get(),
+      scenesColRef(teacherUid, roomId).get()
+    ]);
+    const studentData = studentDoc.exists ? studentDoc.data() : {};
+    const scenes = scenesSnap.docs.map(d=>d.data()).filter(sc=>sc.studentNumber===studentId);
+
+    const sceneLines = scenes.map((sc,i)=>
+      [`장면${i+1} - 제목:${sc.title||''}`, sc.description&&`설명:${sc.description}`, sc.analysis&&`분석:${sc.analysis}`, sc.emotion&&`감정:${sc.emotion}`, sc.musicMood&&`분위기:${sc.musicMood}`].filter(Boolean).join(', ')
+    ).join('\n');
+
+    const letterBody = studentData.letter?.body || '';
+    const interviewQA = (studentData.interview?.questions||[])
+      .map((q,i)=>`${q} → ${studentData.interview.answers?.[i]||''}`)
+      .filter(line=>!line.endsWith('→ ')).join('\n');
+    const newspaperCaptions = (studentData.newspaper?.articles||[]).map(a=>a.caption).filter(Boolean).join(' / ');
+
+    const fullContext = [
+      sceneLines && `[음악 감상·창작 장면]\n${sceneLines}`,
+      newspaperCaptions && `[음악 신문 작성 내용]\n${newspaperCaptions}`,
+      letterBody && `[음악 편지 내용]\n${letterBody}`,
+      interviewQA && `[음악 인터뷰 응답]\n${interviewQA}`,
+    ].filter(Boolean).join('\n\n');
+
+    if(!fullContext){ ta.value = '아직 이 학생의 활동 기록이 없어요.'; return; }
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text:
+          `다음은 한 중학생이 음악 감상·창작 수업(뮤직미디어레터)에서 수행한 활동 기록입니다. 이를 바탕으로 학교생활기록부 교과세부능력특기사항(세특)에 바로 쓸 수 있는 문단을 작성해주세요.\n` +
+          `- 250~350자 내외, 3~5문장으로 작성하세요.\n` +
+          `- "~함", "~하였음", "~을 보임" 등 세특 특유의 명사형·종결형 문체를 사용하세요.\n` +
+          `- 학생이 실제로 수행한 활동(감상, 분석, 창작, 표현)과 그 안에서 드러난 음악적 이해·감수성·태도를 구체적으로 서술하세요.\n` +
+          `- 과장된 수식어는 피하고, 기록된 내용에 근거해서만 작성하세요.\n` +
+          `- 문단만 출력하고 다른 설명은 붙이지 마세요.\n\n${fullContext}`
+        }] }],
+        generationConfig:{ temperature:0.5 }
+      })
+    });
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    ta.value = text || '생성 실패 — 다시 시도해주세요.';
+  }catch(e){
+    console.error(e);
+    ta.value = '생성 실패 — 다시 시도해주세요.';
+  }
+}
 
 // ══════════════════════════
 // 👤 학생 진행상황 자동저장/이어하기
@@ -1109,7 +1227,7 @@ let pendingNewspaperData = null, pendingLetterData = null, pendingInterviewData 
 // ══════════════════════════
 // 📊 구글시트 연동
 // ══════════════════════════
-function logToSheet(activity, title, detail){
+function logToSheet(activity, title, detail, note){
   const url = SHEET_URL || '';
   if(!url) return;
   try{
@@ -1117,10 +1235,32 @@ function logToSheet(activity, title, detail){
       method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         name: document.getElementById('scene-characters')?.value.trim() || (STUDENT_NUMBER? STUDENT_NUMBER+'번' : ''),
-        group: '', app: '뮤직미디어레터', activity, title: title || '', detail: detail || ''
+        group: '', app: '뮤직미디어레터', activity, title: title || '', detail: detail || '', note: note || ''
       })
     });
   }catch(e){ console.warn('시트 기록 실패', e); }
+}
+
+// ══════════════════════════
+// 📋 AI 세특(교과세부능력특기사항) 문구 생성
+// ══════════════════════════
+async function generateActivityNoteAI(context){
+  if(!GEMINI_KEY || !context) return '';
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{ parts:[{ text:
+        `다음은 중학생의 음악 감상·창작 활동 기록입니다. 이 내용을 바탕으로 학교생활기록부 교과세부능력특기사항(세특)에 쓸 수 있는 관찰 기반 문장을 정확히 1문장, 70자 이내로 작성해주세요.\n` +
+        `- 객관적 관찰 사실 위주로 서술하고, "~함", "~을 보임" 같은 세특 특유의 명사형·종결형 문체를 사용하세요.\n` +
+        `- 과장하거나 평가적 수식어(매우, 훌륭히 등)는 최소화하세요.\n` +
+        `- 문장만 출력하고 따옴표나 설명은 붙이지 마세요.\n\n${context}`
+      }] }] })
+    });
+    const data = await res.json();
+    let text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim().replace(/^"|"$/g,'');
+    if(text.length > 90) text = text.slice(0,89)+'…';
+    return text;
+  }catch(e){ console.warn('세특 문장 생성 실패', e); return ''; }
 }
 
 function subscribeScenes() {
@@ -1684,7 +1824,15 @@ async function addSceneToShow() {
       showToast('❌ Firebase 저장 실패 — 잠시 후 다시 시도해주세요');
     }
   }
-  logToSheet('장면추가', title, [characters, scene.emotion, scene.musicMood].filter(Boolean).join(' · '));
+  const noteContext = [
+    `장르/제목: ${title}`,
+    description && `설명: ${description}`,
+    analysis && `음악적 특징: ${analysis}`,
+    scene.emotion && `느낀 감정: ${scene.emotion}`,
+    scene.musicMood && `표현한 분위기: ${scene.musicMood}`,
+  ].filter(Boolean).join('\n');
+  const note = await generateActivityNoteAI(noteContext);
+  logToSheet('장면추가', title, [characters, scene.emotion, scene.musicMood].filter(Boolean).join(' · '), note);
 }
 
 function syncToLocalStorageForSlideshow() {
@@ -1813,6 +1961,14 @@ function scheduleNewspaperSave(){
 function attachNewspaperAutosave(){
   document.getElementById('np-paper').addEventListener('input', scheduleNewspaperSave);
 }
+async function finalizeNewspaper(){
+  const data = collectNewspaperData();
+  const captionsText = data.articles.map(a=>a.caption).filter(Boolean).join(' / ');
+  const context = [`신문 헤드라인: ${data.headline||''}`, captionsText && `학생이 작성한 감상 내용: ${captionsText}`].filter(Boolean).join('\n');
+  const note = await generateActivityNoteAI(context);
+  logToSheet('음악신문완성', data.title||'음악 감상 신문', collectedScenes.length+'개 장면', note);
+  window.print();
+}
 
 function populateLetterSceneSelect() {
   const sel = document.getElementById('letter-scene-select');
@@ -1843,6 +1999,13 @@ function collectLetterData(){
 function scheduleLetterSave(){
   clearTimeout(letterSaveTimer);
   letterSaveTimer = setTimeout(() => { pendingLetterData = collectLetterData(); saveModalData('letter', pendingLetterData); }, 1000);
+}
+async function finalizeLetter(){
+  const data = collectLetterData();
+  const context = [`음악: ${data.song||''}`, data.body && `편지 내용: ${data.body}`].filter(Boolean).join('\n');
+  const note = await generateActivityNoteAI(context);
+  logToSheet('음악편지완성', data.song||'', '', note);
+  window.print();
 }
 function openLetter() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
@@ -1890,6 +2053,14 @@ function collectInterviewData(){
 function scheduleInterviewSave(){
   clearTimeout(interviewSaveTimer);
   interviewSaveTimer = setTimeout(() => { pendingInterviewData = collectInterviewData(); saveModalData('interview', pendingInterviewData); }, 1000);
+}
+async function finalizeInterview(){
+  const data = collectInterviewData();
+  const qa = data.questions.map((q,i)=>`${q} → ${data.answers[i]||''}`).filter(line=>!line.endsWith('→ ')).join('\n');
+  const context = [`음악: ${data.song||''}`, qa && `인터뷰 응답: ${qa}`].filter(Boolean).join('\n');
+  const note = await generateActivityNoteAI(context);
+  logToSheet('음악인터뷰완성', data.song||'', '', note);
+  window.print();
 }
 function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
