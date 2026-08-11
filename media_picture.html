@@ -1235,7 +1235,7 @@ function logToSheet(activity, title, detail, note){
       method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         name: document.getElementById('scene-characters')?.value.trim() || (STUDENT_NUMBER? STUDENT_NUMBER+'번' : ''),
-        group: '', app: '뮤직미디어레터', activity, title: title || '', detail: detail || '', note: note || ''
+        group: currentRoom?.name || '', app: '뮤직미디어레터', activity, title: title || '', detail: detail || '', note: note || ''
       })
     });
   }catch(e){ console.warn('시트 기록 실패', e); }
