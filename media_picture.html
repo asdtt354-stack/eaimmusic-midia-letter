@@ -1463,13 +1463,15 @@ async function generateSunoPrompt() {
       body: JSON.stringify({
         contents:[{ parts:[{ text:
           `아래 원곡 정보를 참고해서, Suno AI 음악 생성에 쓸 "Style of Music" 프롬프트를 만들어줘.\n` +
-          `원곡의 장르와 무드는 유지하되, 학생이 저작권 걱정 없이 쓸 수 있는 편곡 버전이라는 느낌으로.\n` +
+          `가장 중요한 규칙: 원곡의 장르를 절대로 바꾸지 마. K-pop이면 K-pop 그대로, 국악이면 국악 그대로, 재즈면 재즈 그대로 유지해야 해.\n` +
+          `"어쿠스틱 버전", "로파이 버전", "오케스트라 버전"처럼 다른 장르/스타일로 재해석하는 것도 금지야 — 그것도 장르를 바꾸는 거야.\n` +
+          `저작권 걱정 없이 쓸 수 있는 편곡이라는 목적은, 같은 장르 안에서 구체적인 악기 구성·프로덕션 디테일·다이내믹 흐름을 원곡과 다르게 짜는 것으로 달성해줘. 장르 자체는 그대로.\n` +
           `아래 항목을 최대한 다 채워서, 영어 키워드·짧은 구문을 쉼표로 구분해 250자 내외로 출력해줘. 문장이나 설명 없이 키워드/구문만.\n` +
-          `- 구체적인 악기 편성 (예: "fingerpicked acoustic guitar", "warm analog synth pads"처럼 막연한 단어 대신 수식어를 붙여서)\n` +
-          `- 템포/리듬감 (BPM 느낌 또는 "mid-tempo, driving rhythm" 등)\n` +
-          `- 곡의 흐름/다이내믹 변화 (예: "soft intro building to full band chorus")\n` +
-          `- 프로덕션 질감/시대감 (예: "lo-fi warmth", "80s synth-pop production", "cinematic reverb")\n` +
-          `- 보컬 스타일이 어울리면 포함 (예: "breathy female vocals", "layered harmonies") — 안 어울리면 생략\n\n${context}`
+          `- 그 장르에 맞는 구체적인 악기 편성 (예: K-pop이면 "punchy synth bass", "layered vocal chops" 처럼 장르 전형적인 악기에 수식어를 붙여서)\n` +
+          `- 템포/리듬감 (BPM 느낌 또는 "mid-tempo, driving rhythm" 등, 원곡 장르에 맞게)\n` +
+          `- 곡의 흐름/다이내믹 변화 (예: "soft intro building to full chorus")\n` +
+          `- 프로덕션 질감 (그 장르 안에서 자연스러운 것만, 예: K-pop이면 "polished modern production", 국악이면 "전통 국악기 음색")\n` +
+          `- 보컬 스타일이 어울리면 포함 — 안 어울리면 생략\n\n${context}`
         }] }]
       })
     });
