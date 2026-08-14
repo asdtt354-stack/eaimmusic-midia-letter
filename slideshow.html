@@ -13,9 +13,11 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .slide.visible{opacity:1}
 .parallax-container{position:absolute;inset:0;overflow:hidden}
 .bg-layer{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;transition:opacity 1.4s ease, transform .1s ease-out;will-change:transform}
-.char-layer{position:absolute;bottom:0;right:8%;height:90%;max-width:45%;object-fit:contain;transition:opacity 1s ease, transform .08s ease-out;will-change:transform;z-index:5;filter:drop-shadow(0 8px 32px rgba(0,0,0,.7))}
-.char-layer.center{right:auto;left:50%;transform:translateX(-50%);max-width:35%}
-.char-layer.left{right:auto;left:5%;max-width:35%}
+.char-wrap{position:absolute;bottom:0;left:55%;height:85%;max-width:38%;z-index:5;cursor:move}
+.char-wrap.selected{outline:3px dashed #5DADE2;outline-offset:8px;border-radius:8px}
+.char-layer{height:100%;width:auto;max-width:100%;object-fit:contain;transition:opacity 1s ease, transform .08s ease-out;will-change:transform;filter:drop-shadow(0 8px 32px rgba(0,0,0,.7));display:block;pointer-events:none}
+.char-del-btn{position:absolute;top:-10px;right:-10px;width:22px;height:22px;border-radius:50%;background:#ff5252;color:#fff;font-size:12px;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:6;line-height:1;pointer-events:auto}
+.char-wrap:hover .char-del-btn{display:flex}
 .bg-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.1) 100%),linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 45%);z-index:3}
 .bg-spinner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:2}
 .top-bar{position:absolute;top:0;left:0;right:0;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent);z-index:10}
@@ -124,7 +126,6 @@ select.bubble-ctrl-btn{padding:5px 8px}
 #char-panel.show{display:block}
 #char-panel h4{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
 #char-url-input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;outline:none;margin-bottom:6px;font-family:inherit}
-#char-position-select{width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;outline:none;margin-bottom:8px;font-family:inherit}
 .char-panel-btn{width:100%;padding:7px;border-radius:8px;background:rgba(93,173,226,.2);border:1px solid rgba(93,173,226,.4);color:#5DADE2;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:4px}
 .char-panel-btn.remove{background:rgba(255,82,82,.15);border-color:rgba(255,82,82,.4);color:#ff5252}
 .char-panel-btn.anim{background:rgba(255,213,79,.1);border-color:rgba(255,213,79,.3);color:#ffd54f}
@@ -150,6 +151,12 @@ select.bubble-ctrl-btn{padding:5px 8px}
 @keyframes charJump{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px)}70%{transform:translateY(-8px)}}
 @keyframes charExitRight{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
 @keyframes charFadeOut{from{opacity:1}to{opacity:0}}
+@keyframes charSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes charPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes charNod{0%,100%{transform:rotate(0deg)}15%{transform:rotate(-8deg)}30%{transform:rotate(8deg)}45%{transform:rotate(-8deg)}60%{transform:rotate(8deg)}75%{transform:rotate(-4deg)}90%{transform:rotate(4deg)}}
+@keyframes charSparkle{0%,100%{filter:drop-shadow(0 8px 32px rgba(0,0,0,.7)) brightness(1)}50%{filter:drop-shadow(0 8px 32px rgba(0,0,0,.7)) drop-shadow(0 0 20px rgba(255,255,200,.9)) brightness(1.15)}}
+@keyframes charBounceLoop{0%,100%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-18px) scale(1.05,.95)}50%{transform:translateY(0) scale(.95,1.05)}70%{transform:translateY(-6px) scale(1.02,.98)}}
+@keyframes heartFloat{0%{transform:translateY(0) scale(.5);opacity:0}20%{opacity:1;transform:translateY(-10px) scale(1.2)}100%{transform:translateY(-60px) scale(1);opacity:0}}
 
 .char-anim-slide-left{animation:charSlideLeft .6s cubic-bezier(.22,1,.36,1) forwards}
 .char-anim-slide-right{animation:charSlideRight .6s cubic-bezier(.22,1,.36,1) forwards}
@@ -162,6 +169,12 @@ select.bubble-ctrl-btn{padding:5px 8px}
 .char-anim-jump{animation:charJump .5s ease}
 .char-anim-exit-right{animation:charExitRight .5s ease forwards}
 .char-anim-fade-out{animation:charFadeOut .5s ease forwards}
+.char-anim-spin{animation:charSpin .7s ease forwards}
+.char-anim-pop{animation:charPop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.char-anim-nod{animation:charNod 1.2s ease-in-out infinite}
+.char-anim-sparkle{animation:charSparkle 1.8s ease-in-out infinite}
+.char-anim-bounce{animation:charBounceLoop .9s ease-in-out infinite}
+.char-heart{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:28px;pointer-events:none;animation:heartFloat 1.4s ease-out forwards;z-index:7}
 
 #rec-indicator{position:fixed;top:16px;left:16px;z-index:600;display:none;align-items:center;gap:8px;background:rgba(0,0,0,.8);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,82,82,.5);color:#ff5252;font-size:11px;letter-spacing:1px}
 #rec-indicator.show{display:flex}
@@ -204,6 +217,8 @@ select.bubble-ctrl-btn{padding:5px 8px}
 .music-dot{width:7px;height:7px;border-radius:50%;background:#666;flex-shrink:0}
 .music-dot.active{background:#4CAF82;box-shadow:0 0 8px #4CAF82}
 #music-upload-bar .mu-hide-btn{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.5);border-radius:14px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:inherit}
+#music-play-btn{background:rgba(76,175,130,.25);border:1px solid rgba(76,175,130,.5);color:#4CAF82;border-radius:14px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:inherit}
+#music-volume{width:60px;accent-color:#4CAF82}
 </style>
 </head>
 <body>
@@ -233,22 +248,22 @@ select.bubble-ctrl-btn{padding:5px 8px}
 
 <div id="music-upload-bar">
   <div class="music-dot" id="music-upload-dot"></div>
-  <label>🎵 영상용 음악 (편곡본)</label>
+  <label>🎵 배경 음악 (편곡본)</label>
   <input type="file" id="arrangement-file" accept="audio/*" onchange="loadArrangementFile(event)">
+  <button id="music-play-btn" onclick="toggleArrangementPlay()" style="display:none">⏸</button>
+  <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.6" oninput="setMusicVolume(this.value)" style="display:none" title="음량">
   <button class="mu-hide-btn" onclick="toggleMusicBar()">숨기기</button>
 </div>
 
 <div id="char-panel">
   <h4>🎭 캐릭터 레이어</h4>
+  <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">추가된 캐릭터: <span id="char-count">0</span>/3</div>
   <input id="char-url-input" placeholder="캐릭터 이미지 URL">
-  <select id="char-position-select">
-    <option value="right">오른쪽</option>
-    <option value="left">왼쪽</option>
-    <option value="center">가운데</option>
-  </select>
-  <button class="char-panel-btn" onclick="applyCharLayer()">✓ 적용</button>
-  <button class="char-panel-btn remove" onclick="removeCharLayer()">✕ 캐릭터 제거</button>
-  <button class="char-panel-btn anim" onclick="toggleAnimPanel()">🎬 애니메이션</button>
+  <button class="char-panel-btn" onclick="applyCharLayer()">✓ 캐릭터 추가</button>
+  <button class="char-panel-btn remove" onclick="removeCharLayer()">✕ 선택된 캐릭터 제거</button>
+  <button class="char-panel-btn remove" onclick="clearAllChars()" style="opacity:.85">🗑 전체 제거</button>
+  <button class="char-panel-btn anim" onclick="toggleAnimPanel()">🎬 애니메이션 (선택된 캐릭터)</button>
+  <div style="font-size:10px;color:rgba(255,255,255,.3);margin:6px 0;line-height:1.6">💡 캐릭터를 클릭하면 선택되고, 드래그하면 자유롭게 위치를 옮길 수 있어요</div>
   <button class="char-panel-btn" onclick="toggleCharPanel()" style="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.3)">닫기</button>
 </div>
 
@@ -261,6 +276,8 @@ select.bubble-ctrl-btn{padding:5px 8px}
       <button class="anim-btn" onclick="playCharAnim('slide-right')">→ 오른쪽</button>
       <button class="anim-btn" onclick="playCharAnim('slide-up')">↑ 아래서</button>
       <button class="anim-btn" onclick="playCharAnim('fade-in')">✦ 페이드인</button>
+      <button class="anim-btn" onclick="playCharAnim('spin')">🌀 빙글 회전</button>
+      <button class="anim-btn" onclick="playCharAnim('pop')">🎈 뿅 팝업</button>
     </div>
   </div>
   <div class="anim-section">
@@ -269,6 +286,9 @@ select.bubble-ctrl-btn{padding:5px 8px}
       <button class="anim-btn" id="anim-float" onclick="toggleLoopAnim('float')">🌊 둥둥</button>
       <button class="anim-btn" id="anim-breathe" onclick="toggleLoopAnim('breathe')">💨 숨쉬기</button>
       <button class="anim-btn" id="anim-sway" onclick="toggleLoopAnim('sway')">🍃 흔들림</button>
+      <button class="anim-btn" id="anim-nod" onclick="toggleLoopAnim('nod')">🙅 도리도리</button>
+      <button class="anim-btn" id="anim-sparkle" onclick="toggleLoopAnim('sparkle')">✨ 반짝반짝</button>
+      <button class="anim-btn" id="anim-bounce" onclick="toggleLoopAnim('bounce')">⚽ 통통 튀기</button>
       <button class="anim-btn" onclick="stopLoopAnim()">⏹ 중지</button>
     </div>
   </div>
@@ -277,6 +297,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
     <div class="anim-btn-grid">
       <button class="anim-btn" onclick="playCharAnim('jump')">⬆ 점프</button>
       <button class="anim-btn" onclick="playCharAnim('shake')">〰 흔들림</button>
+      <button class="anim-btn" onclick="spawnCharHeart()">💖 하트 뿅뿅</button>
     </div>
   </div>
   <div class="anim-section">
@@ -384,14 +405,12 @@ function applyParallax() {
   rafId = null;
   const slide = getSlideEl(current); if (!slide) return;
   const bg = slide.querySelector('.bg-layer');
-  const ch = slide.querySelector('.char-layer');
   if (bg) bg.style.transform = `translate(${mouseX * -8}px, ${mouseY * -6}px) scale(1.08)`;
-  if (ch) {
-    const base = ch.classList.contains('center') ? 'translateX(-50%)' : '';
+  slide.querySelectorAll('.char-layer').forEach(ch => {
     if (!ch.style.animation || ch.style.animation === 'none') {
-      ch.style.transform = `${base} translate(${mouseX * 18}px, ${mouseY * 10}px)`;
+      ch.style.transform = `translate(${mouseX * 18}px, ${mouseY * 10}px)`;
     }
-  }
+  });
 }
 let floatAngle = 0;
 setInterval(() => {
@@ -400,12 +419,12 @@ setInterval(() => {
   const fx = Math.sin(floatAngle) * 0.3, fy = Math.cos(floatAngle * 0.7) * 0.2;
   const slide = getSlideEl(current); if (!slide) return;
   const bg = slide.querySelector('.bg-layer');
-  const ch = slide.querySelector('.char-layer');
   if (bg) bg.style.transform = `translate(${fx * -8}px, ${fy * -6}px) scale(1.08)`;
-  if (ch && (!ch.style.animation || ch.style.animation==='none')) {
-    const base = ch.classList.contains('center') ? 'translateX(-50%)' : '';
-    ch.style.transform = `${base} translate(${fx * 18}px, ${fy * 10}px)`;
-  }
+  slide.querySelectorAll('.char-layer').forEach(ch => {
+    if (!ch.style.animation || ch.style.animation==='none') {
+      ch.style.transform = `translate(${fx * 18}px, ${fy * 10}px)`;
+    }
+  });
 }, 30);
 
 let GEMINI_KEY = localStorage.getItem('mm_teacher_api') || localStorage.getItem('eaim_gemini_key') || '';
@@ -442,7 +461,6 @@ function getPollinationsUrl(prompt, seed) {
 async function loadBgImage(scene, idx) {
   const el = document.getElementById(`scene-slide-${idx}`); if (!el) return;
   const spinner = document.getElementById(`bg-spinner-${idx}`);
-  // 미디어픽쳐에서 넘어온 이미지는 http(s) URL 또는 data: URL(AI 생성/손그림 스케치) 둘 다일 수 있어요
   if (scene.imageUrl && (scene.imageUrl.startsWith('http') || scene.imageUrl.startsWith('data:'))) {
     const label = scene.imageUrl.startsWith('data:') ? '🎨 미디어픽쳐' : '📌 URL';
     setImgSrc(idx, scene.imageUrl, label); return;
@@ -476,26 +494,94 @@ function toggleCharPanel() {
   const panel = document.getElementById('char-panel');
   panel.classList.toggle('show');
   document.getElementById('btn-char').style.color = panel.classList.contains('show') ? '#FFD700' : 'rgba(255,255,255,.8)';
+  updateCharCount();
+}
+let charIdCounter = 0;
+let selectedCharId = null;
+const CHAR_SLOT_LEFT_PERCENTS = [58, 32, 8]; // 1번째=오른쪽 쪽, 2번째=가운데, 3번째=왼쪽 쪽 (드래그로 자유 조정 가능)
+function updateCharCount() {
+  const slide = getCurrentSlideEl();
+  const n = slide ? slide.querySelectorAll('.char-wrap').length : 0;
+  const el = document.getElementById('char-count'); if (el) el.textContent = n;
+}
+function selectChar(id) {
+  document.querySelectorAll('.char-wrap').forEach(w => w.classList.remove('selected'));
+  selectedCharId = id;
+  const el = document.querySelector(`.char-wrap[data-char-id="${id}"]`);
+  if (el) el.classList.add('selected');
+}
+function makeCharDraggable(el) {
+  let sx, sy, sl, st, moved;
+  el.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('char-del-btn')) return;
+    e.preventDefault();
+    moved = false;
+    const r = el.getBoundingClientRect(), pr = el.parentElement.getBoundingClientRect();
+    sx = e.clientX; sy = e.clientY; sl = r.left - pr.left; st = r.top - pr.top;
+    const mv = mv => {
+      if (Math.abs(mv.clientX - sx) > 4 || Math.abs(mv.clientY - sy) > 4) moved = true;
+      el.style.left = (sl + mv.clientX - sx) + 'px';
+      el.style.top = (st + mv.clientY - sy) + 'px';
+      el.style.right = 'auto'; el.style.bottom = 'auto';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+      if (!moved) selectChar(el.dataset.charId);
+    };
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
 }
 function applyCharLayer() {
   const url = document.getElementById('char-url-input').value.trim();
   if (!url) { showToast('⚠️ 캐릭터 이미지 URL을 입력해주세요'); return; }
-  const pos = document.getElementById('char-position-select').value;
   const slide = getCurrentSlideEl(); if (!slide) return;
-  slide.querySelectorAll('.char-layer').forEach(c => c.remove());
+  const container = slide.querySelector('.parallax-container') || slide;
+  const existing = container.querySelectorAll('.char-wrap');
+  if (existing.length >= 3) { showToast('⚠️ 캐릭터는 한 장면에 최대 3명까지 추가할 수 있어요'); return; }
+  const id = 'char_' + (++charIdCounter);
+  const slot = existing.length;
+  const wrap = document.createElement('div');
+  wrap.className = 'char-wrap';
+  wrap.dataset.charId = id;
+  wrap.style.left = (CHAR_SLOT_LEFT_PERCENTS[slot] || 30) + '%';
   const img = document.createElement('img');
-  img.className = `char-layer ${pos}`;
+  img.className = 'char-layer';
   img.src = url; img.alt = '캐릭터';
-  img.onerror = () => { img.style.display='none'; showToast('⚠️ 이미지를 불러올 수 없어요'); };
-  const container = slide.querySelector('.parallax-container');
-  if (container) container.appendChild(img); else slide.appendChild(img);
+  img.onerror = () => { showToast('⚠️ 이미지를 불러올 수 없어요'); wrap.remove(); updateCharCount(); };
+  const delBtn = document.createElement('button');
+  delBtn.className = 'char-del-btn';
+  delBtn.textContent = '✕';
+  delBtn.onclick = (e) => {
+    e.stopPropagation();
+    wrap.remove();
+    if (selectedCharId === id) selectedCharId = null;
+    updateCharCount();
+    showToast('🗑 캐릭터 제거됨');
+  };
+  wrap.appendChild(img); wrap.appendChild(delBtn);
+  makeCharDraggable(wrap);
+  container.appendChild(wrap);
   document.getElementById('char-url-input').value = '';
-  showToast('✅ 캐릭터 추가됨!');
+  selectChar(id);
+  updateCharCount();
+  showToast('✅ 캐릭터 추가됨! 드래그해서 위치를 옮길 수 있어요');
 }
 function removeCharLayer() {
   const slide = getCurrentSlideEl(); if (!slide) return;
-  slide.querySelectorAll('.char-layer').forEach(c => c.remove());
-  showToast('🗑 캐릭터 제거됨');
+  let target = selectedCharId ? slide.querySelector(`.char-wrap[data-char-id="${selectedCharId}"]`) : null;
+  if (!target) { const all = slide.querySelectorAll('.char-wrap'); target = all[all.length - 1]; }
+  if (target) { target.remove(); selectedCharId = null; showToast('🗑 캐릭터 제거됨'); }
+  else showToast('⚠️ 제거할 캐릭터가 없어요');
+  updateCharCount();
+}
+function clearAllChars() {
+  const slide = getCurrentSlideEl(); if (!slide) return;
+  slide.querySelectorAll('.char-wrap').forEach(c => c.remove());
+  selectedCharId = null;
+  updateCharCount();
+  showToast('🗑 모든 캐릭터 제거됨');
 }
 
 function toggleAnimPanel() {
@@ -504,18 +590,21 @@ function toggleAnimPanel() {
 }
 function getCharEl() {
   const slide = getCurrentSlideEl(); if (!slide) return null;
-  return slide.querySelector('.char-layer');
+  let wrap = selectedCharId ? slide.querySelector(`.char-wrap[data-char-id="${selectedCharId}"]`) : null;
+  if (!wrap) { const all = slide.querySelectorAll('.char-wrap'); wrap = all[all.length - 1]; }
+  return wrap ? wrap.querySelector('.char-layer') : null;
 }
 function playCharAnim(type) {
   const ch = getCharEl();
   if (!ch) { showToast('⚠️ 먼저 캐릭터를 추가해주세요'); return; }
   const allAnims = ['char-anim-slide-left','char-anim-slide-right','char-anim-slide-up',
     'char-anim-fade-in','char-anim-shake','char-anim-jump','char-anim-exit-right','char-anim-fade-out',
-    'char-anim-float','char-anim-breathe','char-anim-sway'];
+    'char-anim-spin','char-anim-pop',
+    'char-anim-float','char-anim-breathe','char-anim-sway','char-anim-nod','char-anim-sparkle','char-anim-bounce'];
   allAnims.forEach(c => ch.classList.remove(c));
   void ch.offsetWidth;
   ch.classList.add('char-anim-' + type);
-  const oneShot = ['shake','jump','exit-right','fade-out','slide-left','slide-right','slide-up','fade-in'];
+  const oneShot = ['shake','jump','exit-right','fade-out','slide-left','slide-right','slide-up','fade-in','spin','pop'];
   if (oneShot.some(o => type === o)) {
     ch.addEventListener('animationend', () => ch.classList.remove('char-anim-' + type), {once:true});
   }
@@ -525,8 +614,8 @@ let currentLoopAnim = null;
 function toggleLoopAnim(type) {
   const ch = getCharEl();
   if (!ch) { showToast('⚠️ 먼저 캐릭터를 추가해주세요'); return; }
-  const loopClasses = ['char-anim-float','char-anim-breathe','char-anim-sway'];
-  const btnIds = ['anim-float','anim-breathe','anim-sway'];
+  const loopClasses = ['char-anim-float','char-anim-breathe','char-anim-sway','char-anim-nod','char-anim-sparkle','char-anim-bounce'];
+  const btnIds = ['anim-float','anim-breathe','anim-sway','anim-nod','anim-sparkle','anim-bounce'];
   if (currentLoopAnim === type) {
     loopClasses.forEach(c => ch.classList.remove(c));
     btnIds.forEach(id => { const b=document.getElementById(id); if(b) b.classList.remove('active'); });
@@ -543,9 +632,20 @@ function toggleLoopAnim(type) {
 }
 function stopLoopAnim() {
   const ch = getCharEl(); if (!ch) return;
-  ['char-anim-float','char-anim-breathe','char-anim-sway'].forEach(c => ch.classList.remove(c));
-  ['anim-float','anim-breathe','anim-sway'].forEach(id => { const b=document.getElementById(id); if(b) b.classList.remove('active'); });
+  ['char-anim-float','char-anim-breathe','char-anim-sway','char-anim-nod','char-anim-sparkle','char-anim-bounce'].forEach(c => ch.classList.remove(c));
+  ['anim-float','anim-breathe','anim-sway','anim-nod','anim-sparkle','anim-bounce'].forEach(id => { const b=document.getElementById(id); if(b) b.classList.remove('active'); });
   currentLoopAnim = null; showToast('⏹ 상시 효과 중지');
+}
+function spawnCharHeart() {
+  const ch = getCharEl();
+  if (!ch) { showToast('⚠️ 먼저 캐릭터를 추가해주세요'); return; }
+  const wrap = ch.closest('.char-wrap'); if (!wrap) return;
+  const heart = document.createElement('div');
+  heart.className = 'char-heart';
+  heart.textContent = '💖';
+  wrap.appendChild(heart);
+  setTimeout(() => heart.remove(), 1500);
+  showToast('💖 하트 뿅뿅!');
 }
 
 /* ── 영상용 음악 업로드 & 믹싱 녹화 (신규) ── */
@@ -560,10 +660,31 @@ function loadArrangementFile(e) {
   if (arrangementAudioEl) { arrangementAudioEl.pause(); arrangementAudioEl.remove(); }
   arrangementAudioEl = document.createElement('audio');
   arrangementAudioEl.src = URL.createObjectURL(file);
-  arrangementAudioEl.loop = false;
+  arrangementAudioEl.loop = true; // 감상 중에는 계속 반복 재생
+  arrangementAudioEl.volume = parseFloat(document.getElementById('music-volume').value || 0.6);
   document.body.appendChild(arrangementAudioEl);
   document.getElementById('music-upload-dot').classList.add('active');
-  showToast('🎵 편곡본 업로드 완료: ' + file.name);
+  document.getElementById('music-play-btn').style.display = 'inline-block';
+  document.getElementById('music-volume').style.display = 'inline-block';
+  arrangementAudioEl.play().then(()=>{
+    updateMusicPlayBtn();
+    showToast('🎵 편곡본 재생 시작: ' + file.name);
+  }).catch(()=>{
+    updateMusicPlayBtn();
+    showToast('▶ 버튼을 눌러 음악을 시작해주세요 (자동재생 차단됨)');
+  });
+}
+function toggleArrangementPlay() {
+  if (!arrangementAudioEl) return;
+  if (arrangementAudioEl.paused) arrangementAudioEl.play(); else arrangementAudioEl.pause();
+  updateMusicPlayBtn();
+}
+function updateMusicPlayBtn() {
+  const btn = document.getElementById('music-play-btn'); if (!btn || !arrangementAudioEl) return;
+  btn.textContent = arrangementAudioEl.paused ? '▶' : '⏸';
+}
+function setMusicVolume(v) {
+  if (arrangementAudioEl) arrangementAudioEl.volume = parseFloat(v);
 }
 function toggleMusicBar() {
   const bar = document.getElementById('music-upload-bar');
@@ -576,7 +697,9 @@ async function toggleRecording() {
   const indicator = document.getElementById('rec-indicator');
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
-    if (arrangementAudioEl) arrangementAudioEl.pause();
+    // 배경 음악은 녹화 종료 후에도 계속 재생됩니다 (감상용으로 끊기지 않게), 다시 반복재생으로 복귀
+    if (arrangementAudioEl) { arrangementAudioEl.loop = true; if (arrangementAudioEl.paused) arrangementAudioEl.play(); }
+    updateMusicPlayBtn();
     clearInterval(recTimer);
     btn.textContent = '⏺';
     btn.style.color = 'rgba(255,255,255,.8)';
@@ -584,8 +707,6 @@ async function toggleRecording() {
     showToast('⏹ 녹화 중지 — 저장 중...');
   } else {
     try {
-      // 화면(영상)만 캡처. 오디오는 시스템 공유에 기대지 않고
-      // 업로드된 편곡본을 Web Audio API로 직접 믹싱해서 넣어요.
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: 'screen', frameRate: 30 },
         audio: false
@@ -598,15 +719,16 @@ async function toggleRecording() {
         audioDestNode = audioCtx.createMediaStreamDestination();
         const source = audioCtx.createMediaElementSource(arrangementAudioEl);
         source.connect(audioDestNode);
-        // 녹화 중에도 모니터링용으로 스피커에도 같이 들리게
         source.connect(audioCtx.destination);
 
         finalStream = new MediaStream([
           ...displayStream.getVideoTracks(),
           ...audioDestNode.stream.getAudioTracks()
         ]);
+        arrangementAudioEl.loop = false; // 녹화 중엔 한 번만 재생해서, 끝나면 자동으로 녹화가 멈추도록
         arrangementAudioEl.currentTime = 0;
         arrangementAudioEl.play();
+        updateMusicPlayBtn();
         showToast('🎵 업로드한 편곡본으로 녹화를 시작해요');
       } else {
         finalStream = displayStream;
@@ -626,11 +748,9 @@ async function toggleRecording() {
         displayStream.getTracks().forEach(t => t.stop());
         showToast('🎬 영상 저장 완료! (편곡본 음악 포함)');
       };
-      // 화면 공유를 사용자가 직접 중지한 경우도 녹화 종료로 처리
       displayStream.getVideoTracks()[0].addEventListener('ended', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
       });
-      // 편곡본이 먼저 끝나면 자동으로 녹화 종료
       if (arrangementAudioEl) {
         arrangementAudioEl.addEventListener('ended', () => {
           if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
