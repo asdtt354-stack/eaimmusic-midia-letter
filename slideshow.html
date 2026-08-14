@@ -47,6 +47,7 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 #controls{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.65);backdrop-filter:blur(14px);border-radius:40px;padding:7px 16px;border:1px solid rgba(255,255,255,.12);z-index:100}
 .ctrl-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.8);font-size:17px;padding:4px 8px;line-height:1}
 .ctrl-btn:disabled{opacity:.25;cursor:default}
+.ctrl-btn.active{color:#5DADE2}
 .dot-nav{display:flex;gap:5px;align-items:center;padding:0 4px}
 .dot{width:7px;height:7px;border-radius:4px;cursor:pointer;background:rgba(255,255,255,.28);transition:all .25s}
 .dot.active{width:20px}
@@ -339,17 +340,18 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="fx-effect-btn" onclick="clearEffects()" style="border-color:#f44336;color:#f44336">✕ 끄기</button>
 </div>
 <div id="controls" style="display:none">
-  <button class="ctrl-btn" id="btn-exit">✕</button>
-  <button class="ctrl-btn" id="btn-prev">◀</button>
+  <button class="ctrl-btn" id="btn-exit" title="처음으로 나가기">✕</button>
+  <button class="ctrl-btn" id="btn-prev" title="이전 장면">◀</button>
   <div class="dot-nav" id="dot-nav"></div>
-  <button class="ctrl-btn" id="btn-next">▶</button>
-  <button class="ctrl-btn" id="btn-auto">⏵</button>
-  <button class="ctrl-btn" id="btn-bubble" onclick="toggleBubblePanel()">💬</button>
-  <button class="ctrl-btn" id="btn-char" onclick="toggleCharPanel()">🎭</button>
+  <button class="ctrl-btn" id="btn-next" title="다음 장면">▶</button>
+  <button class="ctrl-btn" id="btn-auto" title="자동 재생">⏵</button>
+  <button class="ctrl-btn" id="btn-bubble" onclick="toggleBubblePanel()" title="말풍선(대사) 추가">💬</button>
+  <button class="ctrl-btn" id="btn-char" onclick="toggleCharPanel()" title="캐릭터 레이어 추가">🎭</button>
   <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화">⏺</button>
-  <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과">🎆</button>
+  <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과(안개·비·눈 등)">🎆</button>
+  <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면으로 재생">⛶</button>
 </div>
-<div id="key-hint">← → 키보드 | ESC 종료</div>
+<div id="key-hint">← → 키보드 | F 전체화면 | ESC 종료</div>
 <button id="back-btn" onclick="goBack()">↩ 처음으로</button>
 
 <script>
@@ -359,7 +361,7 @@ let DATA = null;
 if (raw) { try { DATA = JSON.parse(raw); } catch(e) {} }
 if (!DATA) {
   DATA = {
-    title:'봄날의 이야기 (데모)',school:'',curtainSongTitle:'우리가 써온 이야기 (Reprise)',
+    title:'슬라이드쇼',school:'',curtainSongTitle:'우리가 써온 이야기 (Reprise)',
     curtainLyrics:'끝나지 않는 이야기가 있어\n우리가 함께 써 내려간 그 페이지\n웃고 울며 걸어온 이 길 위에서\n우린 서로에게 빛이 되었어',
     credits:[{role:'감독',name:'박성애'},{role:'출연',name:'전체 학생'}],
     scenes:[
@@ -495,6 +497,9 @@ function toggleCharPanel() {
   panel.classList.toggle('show');
   document.getElementById('btn-char').style.color = panel.classList.contains('show') ? '#FFD700' : 'rgba(255,255,255,.8)';
   updateCharCount();
+  if (panel.classList.contains('show') && (current === 0 || current === TOTAL + 1)) {
+    showToast('💡 캐릭터는 표지가 아니라 실제 장면(Scene)에서 추가해야 잘 보여요. ▶ 버튼으로 장면으로 이동해보세요');
+  }
 }
 let charIdCounter = 0;
 let selectedCharId = null;
@@ -1086,6 +1091,24 @@ window.addEventListener('load',()=>{
 });
 
 let activeEffects = new Set();
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => showToast('⚠️ 이 브라우저에서는 전체화면을 지원하지 않아요'));
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('btn-fullscreen'); if (!btn) return;
+  const isFs = !!document.fullscreenElement;
+  btn.classList.toggle('active', isFs);
+  btn.title = isFs ? '전체화면 종료' : '전체화면으로 재생';
+});
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'bubble-text-input') return;
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+});
 
 function toggleFxPanel(){
   document.getElementById('fx-panel').classList.toggle('open');

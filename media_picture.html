@@ -735,6 +735,7 @@ let collectedScenes = [];
 let sketchDataUrl = null;
 let sceneVisualChoice = 'ai';
 let selectedSegments = null;
+let sourceMusicTitle = '';
 
 // ══════════════════════════
 // 🔥 Firebase — teachers/{uid}/... 구조로 교사별 데이터 완전 분리
@@ -1562,6 +1563,7 @@ function switchTab(tab) {
 function searchYoutube() {
   const q = document.getElementById('yt-search-query').value.trim();
   if (!q) { showToast('⚠️ 검색어를 입력해주세요'); return; }
+  if (!sourceMusicTitle) sourceMusicTitle = q;
   window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
   showToast('🔍 새 탭에서 검색 결과를 확인해주세요');
 }
@@ -1595,6 +1597,7 @@ let currentAudioBase64 = null, currentAudioMime = null;
 
 function loadMusicFile(e) {
   const file = e.target.files[0]; if (!file) return;
+  if (!sourceMusicTitle) sourceMusicTitle = file.name.replace(/\.[^/.]+$/, '');
   const url = URL.createObjectURL(file);
   const audio = document.getElementById('audio-el');
   audio.src = url;
@@ -1840,8 +1843,10 @@ function syncToLocalStorageForSlideshow() {
 }
 
 function saveScenesToStorage() {
+  const genreTitle = document.getElementById('scene-title')?.value.trim() || '';
+  const title = sourceMusicTitle || genreTitle || '우리의 뮤직미디어레터';
   const data = {
-    title: '우리의 뮤직미디어레터',
+    title,
     school: '',
     scenes: collectedScenes,
   };
