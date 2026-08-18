@@ -772,15 +772,15 @@ const roomsColRef    = (uid) => teacherDocRef(uid).collection('rooms');
 const roomDocRef     = (uid, rId) => roomsColRef(uid).doc(rId);
 const scenesColRef   = (uid, rId) => roomDocRef(uid, rId).collection('scenes');
 const studentsColRef = (uid, rId) => roomDocRef(uid, rId).collection('students');
-const sharedNewspaperRef = (uid, rId) => roomDocRef(uid, rId).collection('shared').doc('newspaper');
-const sharedGroupNewspaperRef = (uid, rId, groupNum) => roomDocRef(uid, rId).collection('sharedGroups').doc('g' + groupNum);
+const sharedRoomDocRef = (uid, rId, key) => roomDocRef(uid, rId).collection('shared').doc(key);
+const sharedGroupDocRef = (uid, rId, groupNum, key) => roomDocRef(uid, rId).collection('sharedGroups').doc('g' + groupNum + '_' + key);
 
 let authLoaded=false, currentUser=null, teacherUid=null, isStudentMode=false;
 let roomId=null, currentRoom={ name:'', classOn:false };
 let dashTab='settings';
 let settings = { apiKey:'', sheetUrl:'' };
 let dashRooms=[], dashStudents=[], expandedRoomId=null;
-let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null, unsubNewspaper=null;
+let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null, unsubNewspaper=null, unsubLetter=null, unsubInterview=null;
 
 // GEMINI_KEY / SHEET_URL는 settings와 동기화되는 미러 변수 (기존 함수들이 그대로 참조)
 let GEMINI_KEY = '';
@@ -911,6 +911,9 @@ function toggleRoomClass(rId, current){
 }
 function setRoomShareScope(rId, scope){
   roomDocRef(teacherUid, rId).set({shareScope: scope},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
+}
+function setShareLetterInterview(rId, checked){
+  roomDocRef(teacherUid, rId).set({shareLetterInterview: checked},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
 function toggleRoomExpand(rId){
   expandedRoomId = expandedRoomId===rId ? null : rId;
@@ -1065,6 +1068,10 @@ function renderDashContent(){
           r.shareScope==='individual' ? '서로 안 보이고 각자 자기 것만 보여요.' :
           '반 전체가 서로 다 보여요.'
         }</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.7rem;color:var(--text2);cursor:pointer">
+          <input type="checkbox" ${r.shareLetterInterview?'checked':''} onchange="setShareLetterInterview('${r.id}', this.checked)">
+          💌🎤 음악편지·음악인터뷰도 위 설정과 함께 공유 (기본: 항상 개인별 — 평가에 안전)
+        </label>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="toggleRoomExpand('${r.id}')">${isOpen?'▲ 접기':'👥 학생현황 · 초대 QR'}</button>
           <button class="btn btn-secondary" style="background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteRoomUI('${r.id}')">🗑️ 삭제</button>
@@ -1996,20 +2003,33 @@ function goToSlideshow() {
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   if (id === 'newspaper-modal' && unsubNewspaper) { unsubNewspaper(); unsubNewspaper = null; }
+  if (id === 'letter-modal' && unsubLetter) { unsubLetter(); unsubLetter = null; }
+  if (id === 'interview-modal' && unsubInterview) { unsubInterview(); unsubInterview = null; }
 }
 
-function currentNewspaperRef(){
+function sharedRefForScope(scope, key){
   if (!firebaseReady || !teacherUid || !roomId) return null;
-  const scope = currentRoom.shareScope || 'room';
-  if (scope === 'group') return sharedGroupNewspaperRef(teacherUid, roomId, STUDENT_GROUP || '0');
-  return sharedNewspaperRef(teacherUid, roomId); // scope==='room' 일 때
+  if (scope === 'group') return sharedGroupDocRef(teacherUid, roomId, STUDENT_GROUP || '0', key);
+  return sharedRoomDocRef(teacherUid, roomId, key); // scope==='room' 일 때
+}
+function currentSharedRef(key){
+  return sharedRefForScope(currentRoom.shareScope || 'room', key); // 장면·신문: 반 설정 그대로 사용
+}
+function letterInterviewScope(){
+  // 편지·인터뷰는 기본이 '개인별' — 선생님이 shareLetterInterview를 켰을 때만 반 설정을 따라감
+  return currentRoom.shareLetterInterview ? (currentRoom.shareScope || 'room') : 'individual';
+}
+function currentLetterInterviewRef(key){
+  const scope = letterInterviewScope();
+  if (scope === 'individual') return null;
+  return sharedRefForScope(scope, key);
 }
 async function openNewspaper() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
   if ((currentRoom.shareScope || 'room') !== 'individual') {
     try {
-      const ref = currentNewspaperRef();
+      const ref = currentSharedRef('newspaper');
       if (ref) {
         const snap = await ref.get();
         pendingNewspaperData = snap.exists ? snap.data() : null;
@@ -2034,7 +2054,7 @@ async function openNewspaper() {
   logToSheet('음악신문열기', document.getElementById('np-title')?.value||'음악 감상 신문', collectedScenes.length+'개 장면');
 }
 function subscribeNewspaperShared(){
-  const ref = currentNewspaperRef();
+  const ref = currentSharedRef('newspaper');
   if (!ref) return;
   if (unsubNewspaper) unsubNewspaper();
   unsubNewspaper = ref.onSnapshot(snap => {
@@ -2097,7 +2117,7 @@ function scheduleNewspaperSave(){
       saveModalData('newspaper', pendingNewspaperData); // 개인별: 내 문서에만 저장, 다른 학생과 공유 안 됨
       return;
     }
-    const ref = currentNewspaperRef(); // scope에 따라 반 전체 문서 또는 모둠 문서
+    const ref = currentSharedRef('newspaper'); // scope에 따라 반 전체 문서 또는 모둠 문서
     if (!ref) return;
     ref.set({
       ...pendingNewspaperData,
@@ -2146,7 +2166,43 @@ function collectLetterData(){
 }
 function scheduleLetterSave(){
   clearTimeout(letterSaveTimer);
-  letterSaveTimer = setTimeout(() => { pendingLetterData = collectLetterData(); saveModalData('letter', pendingLetterData); }, 1000);
+  letterSaveTimer = setTimeout(() => {
+    pendingLetterData = collectLetterData();
+    if (letterInterviewScope() === 'individual') {
+      saveModalData('letter', pendingLetterData);
+      return;
+    }
+    const ref = currentLetterInterviewRef('letter');
+    if (!ref) return;
+    ref.set({
+      ...pendingLetterData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: STUDENT_NUMBER || ''
+    }, {merge:true}).catch(e => console.warn('편지 공유 저장 실패', e));
+  }, 1000);
+}
+function subscribeLetterShared(){
+  const ref = currentLetterInterviewRef('letter');
+  if (!ref) return;
+  if (unsubLetter) unsubLetter();
+  unsubLetter = ref.onSnapshot(snap => {
+    if (!snap.exists) return;
+    const data = snap.data();
+    if (data.updatedBy === STUDENT_NUMBER) return;
+    const paper = document.getElementById('letter-paper');
+    if (paper && paper.contains(document.activeElement)) return;
+    pendingLetterData = data;
+    document.getElementById('letter-date').value = data.date || '';
+    document.getElementById('letter-to').value = data.to || '';
+    document.getElementById('letter-song').value = data.song || '';
+    document.getElementById('letter-body').value = data.body || '';
+    document.getElementById('letter-from').value = data.from || '';
+    if (data.sceneIndex !== undefined) {
+      document.getElementById('letter-scene-select').value = data.sceneIndex;
+      const s = collectedScenes[data.sceneIndex];
+      if (s) document.getElementById('letter-img').src = s.imageUrl;
+    }
+  }, err => console.warn('편지 공유 동기화 오류', err));
 }
 async function finalizeLetter(){
   const data = collectLetterData();
@@ -2155,10 +2211,16 @@ async function finalizeLetter(){
   logToSheet('음악편지완성', data.song||'', '', note);
   window.print();
 }
-function openLetter() {
+async function openLetter() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
   populateLetterSceneSelect();
+  if (letterInterviewScope() !== 'individual') {
+    try {
+      const ref = currentLetterInterviewRef('letter');
+      if (ref) { const snap = await ref.get(); pendingLetterData = snap.exists ? snap.data() : null; }
+    } catch(e) { console.warn('편지 불러오기 실패', e); }
+  }
   if (pendingLetterData) {
     document.getElementById('letter-date').value = pendingLetterData.date || '';
     document.getElementById('letter-to').value = pendingLetterData.to || '';
@@ -2176,6 +2238,7 @@ function openLetter() {
   }
   document.getElementById('letter-modal').classList.add('open');
   document.getElementById('letter-paper').addEventListener('input', scheduleLetterSave);
+  if (letterInterviewScope() !== 'individual') subscribeLetterShared();
   logToSheet('음악편지열기', collectedScenes[collectedScenes.length-1]?.title||'', '');
 }
 
@@ -2218,7 +2281,46 @@ function collectInterviewData(){
 }
 function scheduleInterviewSave(){
   clearTimeout(interviewSaveTimer);
-  interviewSaveTimer = setTimeout(() => { pendingInterviewData = collectInterviewData(); saveModalData('interview', pendingInterviewData); }, 1000);
+  interviewSaveTimer = setTimeout(() => {
+    pendingInterviewData = collectInterviewData();
+    if (letterInterviewScope() === 'individual') {
+      saveModalData('interview', pendingInterviewData);
+      return;
+    }
+    const ref = currentLetterInterviewRef('interview');
+    if (!ref) return;
+    ref.set({
+      ...pendingInterviewData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: STUDENT_NUMBER || ''
+    }, {merge:true}).catch(e => console.warn('인터뷰 공유 저장 실패', e));
+  }, 1000);
+}
+function subscribeInterviewShared(){
+  const ref = currentLetterInterviewRef('interview');
+  if (!ref) return;
+  if (unsubInterview) unsubInterview();
+  unsubInterview = ref.onSnapshot(snap => {
+    if (!snap.exists) return;
+    const data = snap.data();
+    if (data.updatedBy === STUDENT_NUMBER) return;
+    const paper = document.getElementById('interview-paper');
+    if (paper && paper.contains(document.activeElement)) return;
+    pendingInterviewData = data;
+    document.getElementById('interview-subtitle').value = data.subtitle || '';
+    document.getElementById('interview-song').value = data.song || '';
+    document.getElementById('interview-date').value = data.date || '';
+    if (data.sceneIndex !== undefined && collectedScenes[data.sceneIndex]) {
+      document.getElementById('interview-scene-select').value = data.sceneIndex;
+      document.getElementById('interview-img').src = collectedScenes[data.sceneIndex].imageUrl;
+    }
+    const qs = (data.questions && data.questions.length) ? data.questions : defaultQuestions;
+    buildQASection(qs);
+    (data.answers || []).forEach((a, i) => {
+      const els = document.querySelectorAll('#qa-section .qa-textarea');
+      if (els[i]) els[i].value = a;
+    });
+  }, err => console.warn('인터뷰 공유 동기화 오류', err));
 }
 async function finalizeInterview(){
   const data = collectInterviewData();
@@ -2228,10 +2330,16 @@ async function finalizeInterview(){
   logToSheet('음악인터뷰완성', data.song||'', '', note);
   window.print();
 }
-function openInterview() {
+async function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   populateInterviewSceneSelect();
   const now = new Date();
+  if (letterInterviewScope() !== 'individual') {
+    try {
+      const ref = currentLetterInterviewRef('interview');
+      if (ref) { const snap = await ref.get(); pendingInterviewData = snap.exists ? snap.data() : null; }
+    } catch(e) { console.warn('인터뷰 불러오기 실패', e); }
+  }
   let idx = collectedScenes.length - 1;
   if (pendingInterviewData && pendingInterviewData.sceneIndex !== undefined && collectedScenes[pendingInterviewData.sceneIndex]) {
     idx = pendingInterviewData.sceneIndex;
@@ -2256,6 +2364,7 @@ function openInterview() {
   }
   document.getElementById('interview-modal').classList.add('open');
   document.getElementById('interview-paper').addEventListener('input', scheduleInterviewSave);
+  if (letterInterviewScope() !== 'individual') subscribeInterviewShared();
   logToSheet('음악인터뷰열기', s.title||'', '');
 }
 function buildQASection(questions) {
