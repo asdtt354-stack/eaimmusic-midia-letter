@@ -81,6 +81,18 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .credits-footer{text-align:center;margin-top:56px;padding-bottom:40px}
 #back-btn{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 28px;border-radius:8px;background:rgba(93,173,226,.15);border:1px solid rgba(93,173,226,.5);color:#5DADE2;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;backdrop-filter:blur(8px);display:none}
 #api-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px}
+#rec-checklist-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px}
+#rec-checklist-modal.hidden{display:none}
+.rec-checklist{display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:16px}
+.rec-check-item{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:12.5px;line-height:1.6;color:rgba(255,255,255,.85)}
+.rec-check-item:has(input:checked){border-color:rgba(255,82,82,.5);background:rgba(255,82,82,.08)}
+.rec-check-item input{margin-top:2px;accent-color:#ff5252;flex-shrink:0}
+.rec-check-item em{color:rgba(255,255,255,.45);font-style:normal}
+#rec-confirm-btn:disabled{opacity:.35;cursor:not-allowed;background:rgba(255,255,255,.1)!important}
+#btn-rec{background:rgba(255,82,82,.16);border:1.5px solid rgba(255,82,82,.55);border-radius:50%;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;color:#ff5252!important;animation:recIdlePulse 2.4s ease-in-out infinite}
+#btn-rec.is-recording{animation:recActivePulse 1s ease-in-out infinite;background:rgba(255,82,82,.35);border-color:#ff5252}
+@keyframes recIdlePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,82,82,.35)}50%{box-shadow:0 0 0 6px rgba(255,82,82,0)}}
+@keyframes recActivePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,82,82,.55)}50%{box-shadow:0 0 0 9px rgba(255,82,82,0)}}
 #api-modal.hidden{display:none}
 .api-box{background:linear-gradient(135deg,#13131a,#1a0a2e);border:1px solid rgba(93,173,226,.3);border-radius:16px;padding:32px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .api-title{font-size:18px;font-weight:800;margin-bottom:6px}
@@ -242,6 +254,24 @@ select.bubble-ctrl-btn{padding:5px 8px}
   </div>
 </div>
 
+<div id="rec-checklist-modal" class="hidden">
+  <div class="api-box" style="max-width:420px">
+    <div style="font-size:32px;margin-bottom:12px">🎬</div>
+    <div class="api-title">녹화 시작 전 확인!</div>
+    <div class="api-sub">아래를 확인하고 준비되면 시작해주세요.</div>
+    <div class="rec-checklist">
+      <label class="rec-check-item"><input type="checkbox" id="chk-music"><span>🎵 편곡 음악을 업로드했나요? <em>(안 하면 영상에 소리가 없어요)</em></span></label>
+      <label class="rec-check-item"><input type="checkbox" id="chk-order"><span>▶ 슬라이드 순서·내용을 확인했나요?</span></label>
+      <label class="rec-check-item"><input type="checkbox" id="chk-window"><span>🖥 다른 창·알림을 다 닫고 이 화면만 보이게 했나요?</span></label>
+      <label class="rec-check-item"><input type="checkbox" id="chk-share"><span>🪟 잠시 후 "화면 공유" 창이 뜨면, 반드시 <b>이 탭(창)</b>을 선택해야 해요</span></label>
+    </div>
+    <div class="api-row">
+      <button class="api-btn-ok" id="rec-confirm-btn" onclick="confirmStartRecording()" disabled style="background:linear-gradient(135deg,#ff5252,#b71c1c)">🔴 녹화 시작</button>
+      <button class="api-btn-skip" onclick="closeRecChecklist()">취소</button>
+    </div>
+  </div>
+</div>
+
 <div class="api-status" id="api-status" onclick="resetApiKey()"></div>
 <div id="signal-indicator">🚦 <span id="signal-text">음향 신호 발신 중</span></div>
 <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-text">녹화 중... 0:00</span></div>
@@ -347,7 +377,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="ctrl-btn" id="btn-auto" title="자동 재생">⏵</button>
   <button class="ctrl-btn" id="btn-bubble" onclick="toggleBubblePanel()" title="말풍선(대사) 추가">💬</button>
   <button class="ctrl-btn" id="btn-char" onclick="toggleCharPanel()" title="캐릭터 레이어 추가">🎭</button>
-  <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화">⏺</button>
+  <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화로 영상 저장하기">⏺</button>
   <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과(안개·비·눈 등)">🎆</button>
   <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면으로 재생">⛶</button>
 </div>
@@ -697,21 +727,48 @@ function toggleMusicBar() {
 }
 
 let mediaRecorder = null, recChunks = [], recTimer = null, recSeconds = 0;
-async function toggleRecording() {
+function toggleRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    stopScreenRecording();
+  } else {
+    openRecChecklist();
+  }
+}
+function stopScreenRecording() {
   const btn = document.getElementById('btn-rec');
   const indicator = document.getElementById('rec-indicator');
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    // 배경 음악은 녹화 종료 후에도 계속 재생됩니다 (감상용으로 끊기지 않게), 다시 반복재생으로 복귀
-    if (arrangementAudioEl) { arrangementAudioEl.loop = true; if (arrangementAudioEl.paused) arrangementAudioEl.play(); }
-    updateMusicPlayBtn();
-    clearInterval(recTimer);
-    btn.textContent = '⏺';
-    btn.style.color = 'rgba(255,255,255,.8)';
-    indicator.classList.remove('show');
-    showToast('⏹ 녹화 중지 — 저장 중...');
-  } else {
-    try {
+  mediaRecorder.stop();
+  // 배경 음악은 녹화 종료 후에도 계속 재생됩니다 (감상용으로 끊기지 않게), 다시 반복재생으로 복귀
+  if (arrangementAudioEl) { arrangementAudioEl.loop = true; if (arrangementAudioEl.paused) arrangementAudioEl.play(); }
+  updateMusicPlayBtn();
+  clearInterval(recTimer);
+  btn.textContent = '⏺';
+  btn.classList.remove('is-recording');
+  indicator.classList.remove('show');
+  showToast('⏹ 녹화 중지 — 저장 중...');
+}
+function openRecChecklist() {
+  document.querySelectorAll('.rec-checklist input[type=checkbox]').forEach(c => c.checked = false);
+  document.getElementById('rec-confirm-btn').disabled = true;
+  document.getElementById('rec-checklist-modal').classList.remove('hidden');
+}
+function closeRecChecklist() {
+  document.getElementById('rec-checklist-modal').classList.add('hidden');
+}
+document.querySelectorAll('.rec-checklist input[type=checkbox]').forEach(c => {
+  c.addEventListener('change', () => {
+    const all = Array.from(document.querySelectorAll('.rec-checklist input[type=checkbox]'));
+    document.getElementById('rec-confirm-btn').disabled = !all.every(x => x.checked);
+  });
+});
+function confirmStartRecording() {
+  closeRecChecklist();
+  beginScreenRecording();
+}
+async function beginScreenRecording() {
+  const btn = document.getElementById('btn-rec');
+  const indicator = document.getElementById('rec-indicator');
+  try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: 'screen', frameRate: 30 },
         audio: false
@@ -754,16 +811,16 @@ async function toggleRecording() {
         showToast('🎬 영상 저장 완료! (편곡본 음악 포함)');
       };
       displayStream.getVideoTracks()[0].addEventListener('ended', () => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
+        if (mediaRecorder && mediaRecorder.state === 'recording') stopScreenRecording();
       });
       if (arrangementAudioEl) {
         arrangementAudioEl.addEventListener('ended', () => {
-          if (mediaRecorder && mediaRecorder.state === 'recording') toggleRecording();
+          if (mediaRecorder && mediaRecorder.state === 'recording') stopScreenRecording();
         }, { once: true });
       }
       mediaRecorder.start(1000);
       btn.textContent = '⏹';
-      btn.style.color = '#ff5252';
+      btn.classList.add('is-recording');
       indicator.classList.add('show');
       recTimer = setInterval(() => {
         recSeconds++;
@@ -775,7 +832,6 @@ async function toggleRecording() {
       console.error(e);
       showToast('⚠️ 화면 공유를 허용해주세요');
     }
-  }
 }
 
 function buildCover() {

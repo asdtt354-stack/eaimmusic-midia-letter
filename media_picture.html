@@ -546,6 +546,24 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </button>
   </div>
 
+  <div class="step-card" id="scene-list-card">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">🎬</div>
+      <div>
+        <div class="step-title">모아진 장면 (<span id="scene-count">0</span>개)</div>
+        <div class="step-desc" id="scene-list-desc">아직 모은 장면이 없어요 — 위에서 "➕ 이 장면 모으기"를 누르면 여기 쌓여요</div>
+      </div>
+    </div>
+    <div id="scene-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="btn-go-slideshow" onclick="goToSlideshow()" style="background:linear-gradient(135deg,#4CAF82,#2E7D5A)" disabled>🎬 슬라이드쇼로 이동</button>
+      <button class="btn btn-primary" id="btn-open-newspaper" onclick="openNewspaper()" style="background:#C9A84C;color:#1a1a1a" disabled>📰 음악 신문 만들기</button>
+      <button class="btn btn-primary" id="btn-open-letter" onclick="openLetter()" style="background:#E94560" disabled>💌 음악 편지 쓰기</button>
+      <button class="btn btn-primary" id="btn-open-interview" onclick="openInterview()" style="background:#7C4DFF" disabled>🎤 음악 인터뷰</button>
+      <button class="btn btn-secondary" onclick="clearScenes()">🗑 전체 초기화</button>
+    </div>
+  </div>
+
   <div id="result-section">
     <div class="result-card">
       <img class="result-img" id="result-img" alt="생성된 이미지" style="display:none">
@@ -558,24 +576,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-secondary" onclick="generateImage()">🔄 다시 생성</button>
           <button class="btn btn-primary" onclick="addSceneToShow()" style="background:#4CAF82;border-color:#4CAF82">➕ 이 장면 모으기</button>
         </div>
-      </div>
-    </div>
-
-    <div class="step-card" id="scene-list-card">
-      <div class="step-header">
-        <div class="step-num" style="background:rgba(76,175,130,.15);border:1.5px solid #4CAF82;color:#4CAF82">🎬</div>
-        <div>
-          <div class="step-title">모아진 장면 (<span id="scene-count">0</span>개)</div>
-          <div class="step-desc" id="scene-list-desc">아직 모은 장면이 없어요 — 위에서 "➕ 이 장면 모으기"를 누르면 여기 쌓여요</div>
-        </div>
-      </div>
-      <div id="scene-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn-go-slideshow" onclick="goToSlideshow()" style="background:linear-gradient(135deg,#4CAF82,#2E7D5A)" disabled>🎬 슬라이드쇼로 이동</button>
-        <button class="btn btn-primary" id="btn-open-newspaper" onclick="openNewspaper()" style="background:#C9A84C;color:#1a1a1a" disabled>📰 음악 신문 만들기</button>
-        <button class="btn btn-primary" id="btn-open-letter" onclick="openLetter()" style="background:#E94560" disabled>💌 음악 편지 쓰기</button>
-        <button class="btn btn-primary" id="btn-open-interview" onclick="openInterview()" style="background:#7C4DFF" disabled>🎤 음악 인터뷰</button>
-        <button class="btn btn-secondary" onclick="clearScenes()">🗑 전체 초기화</button>
       </div>
     </div>
 
