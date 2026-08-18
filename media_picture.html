@@ -694,6 +694,16 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
 </div>
 
+<div id="student-view-modal" style="display:none;position:fixed;inset:0;background:rgba(10,10,15,.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;padding:24px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:1rem;color:var(--accent)">👁 활동 보기 (<span id="sv-student-label"></span>)</div>
+      <button class="dash-logout" onclick="closeStudentView()">✕ 닫기</button>
+    </div>
+    <div id="sv-body"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -997,6 +1007,9 @@ async function doStudentLogin(){
     showToast('⚠️ 이전 작업을 불러오지 못했어요, 새로 시작할게요');
   }
   studentAutosaveEnabled = true;
+  if (firebaseReady && teacherUid && roomId) {
+    studentDocRef().set({ groupNumber: STUDENT_GROUP || null, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}).catch(()=>{});
+  }
   subscribeScenes();
 }
 
@@ -1092,6 +1105,7 @@ function renderDashContent(){
                   <strong>${s.id}번</strong>
                   <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
                 </div>
+                <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;flex-shrink:0" onclick="openStudentView('${r.id}','${s.id}')">👁 보기</button>
                 <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;flex-shrink:0" onclick="openStudentReport('${r.id}','${s.id}')">📋 세특</button>
               </div>`).join('')}
         </div>` : ''}
@@ -1118,6 +1132,108 @@ async function copyReportText(){
   navigator.clipboard.writeText(text)
     .then(()=>showToast('📋 복사했어요!'))
     .catch(()=>showToast('⚠️ 자동 복사 실패 — 직접 선택해서 복사해주세요'));
+}
+
+// ══════════════════════════
+// 👁 학생 활동 보기 (장면·신문·편지·인터뷰 + 원격 슬라이드쇼 링크)
+// ══════════════════════════
+async function fetchSharedContent(kind, rId, room, studentData){
+  const scope = kind === 'newspaper'
+    ? (room.shareScope || 'room')
+    : (room.shareLetterInterview ? (room.shareScope || 'room') : 'individual');
+  if (scope === 'individual') return studentData?.[kind] || null;
+  try {
+    if (scope === 'group') {
+      const g = studentData?.groupNumber;
+      if (!g) return null;
+      const snap = await sharedGroupDocRef(teacherUid, rId, g, kind).get();
+      return snap.exists ? snap.data() : null;
+    }
+    const snap = await sharedRoomDocRef(teacherUid, rId, kind).get();
+    return snap.exists ? snap.data() : null;
+  } catch(e) { console.warn('공유 콘텐츠 조회 실패', kind, e); return null; }
+}
+
+async function openStudentView(rId, studentId){
+  document.getElementById('sv-student-label').textContent = studentId+'번';
+  document.getElementById('sv-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text2)">불러오는 중...</div>';
+  document.getElementById('student-view-modal').style.display='flex';
+  try {
+    const room = dashRooms.find(r=>r.id===rId) || {};
+    const studentSnap = await studentsColRef(teacherUid, rId).doc(studentId).get();
+    const studentData = studentSnap.exists ? studentSnap.data() : {};
+    const scenesSnap = await scenesColRef(teacherUid, rId).get();
+    const scenes = scenesSnap.docs.map(d=>d.data())
+      .filter(sc=>sc.studentNumber===studentId)
+      .sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    const [newspaper, letter, interview] = await Promise.all([
+      fetchSharedContent('newspaper', rId, room, studentData),
+      fetchSharedContent('letter', rId, room, studentData),
+      fetchSharedContent('interview', rId, room, studentData),
+    ]);
+    renderStudentView({ scenes, newspaper, letter, interview, room, studentData, rId, studentId });
+  } catch(e) {
+    console.error(e);
+    document.getElementById('sv-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--accent2)">불러오기 실패 — 다시 시도해주세요</div>';
+  }
+}
+function closeStudentView(){ document.getElementById('student-view-modal').style.display='none'; }
+
+function renderStudentView({ scenes, newspaper, letter, interview, room, studentData, rId, studentId }){
+  const scope = room.shareScope || 'room';
+  let slideshowUrl = `slideshow.html?mode=teacher&teacher=${teacherUid}&room=${rId}`;
+  let scopeNote = '';
+  if (scope === 'individual') { slideshowUrl += `&student=${studentId}`; }
+  else if (scope === 'group') {
+    const g = studentData.groupNumber;
+    if (g) { slideshowUrl += `&group=${g}`; scopeNote = `💡 이 학생은 ${g}모둠 — 모둠 전체가 공유하는 내용이에요.`; }
+    else { scopeNote = '⚠️ 이 학생의 모둠 번호를 아직 확인할 수 없어요 (접속 기록 없음)'; }
+  } else {
+    scopeNote = '💡 반 전체가 공유하는 내용이에요.';
+  }
+
+  const sceneThumbs = scenes.length ? scenes.map(s=>`
+    <div style="display:flex;gap:10px;align-items:center;background:var(--surface2);border-radius:10px;padding:8px 12px;margin-bottom:6px">
+      <img src="${s.imageUrl||''}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#000">
+      <div style="font-size:.8rem;min-width:0">
+        <b>${s.title||''}</b>
+        <div style="color:var(--text2);font-size:.72rem">${[s.emotion, s.musicMood].filter(Boolean).join(' · ')}</div>
+      </div>
+    </div>`).join('') : '<div style="color:var(--text2);font-size:.8rem">아직 모은 장면이 없어요</div>';
+
+  const npArticles = (newspaper?.articles||[]).map(a=>`
+    <div style="margin-bottom:10px;font-size:.82rem"><b>${a.title||''}</b><div style="color:var(--text2);white-space:pre-wrap;margin-top:2px">${a.caption||''}</div></div>
+  `).join('');
+  const npBlock = newspaper ? `
+    <div class="dash-card-title" style="margin-top:18px">📰 음악신문</div>
+    <div style="font-weight:700;margin-bottom:8px">${newspaper.headline||newspaper.title||''}</div>
+    ${npArticles || '<div style="color:var(--text2);font-size:.8rem">작성된 기사가 없어요</div>'}
+  ` : `<div class="dash-card-title" style="margin-top:18px">📰 음악신문</div><div style="color:var(--text2);font-size:.8rem">아직 작성된 내용이 없어요</div>`;
+
+  const letterBlock = (letter && letter.body) ? `
+    <div class="dash-card-title" style="margin-top:18px">💌 음악편지</div>
+    <div style="font-size:.78rem;color:var(--text2);margin-bottom:4px">${letter.to?('To. '+letter.to):''}</div>
+    <div style="font-size:.85rem;white-space:pre-wrap;line-height:1.7">${letter.body}</div>
+    <div style="text-align:right;font-size:.76rem;color:var(--text2);margin-top:6px">${letter.from||''}</div>
+  ` : `<div class="dash-card-title" style="margin-top:18px">💌 음악편지</div><div style="color:var(--text2);font-size:.8rem">아직 작성된 내용이 없어요</div>`;
+
+  const qaHtml = (interview?.questions||[]).map((q,i)=>`
+    <div style="margin-bottom:10px;font-size:.82rem"><b>Q${i+1}. ${q}</b><div style="color:var(--text2);margin-top:2px;white-space:pre-wrap">${interview.answers?.[i] || '(응답 없음)'}</div></div>
+  `).join('');
+  const interviewBlock = (interview && interview.questions?.length) ? `
+    <div class="dash-card-title" style="margin-top:18px">🎤 음악인터뷰</div>
+    ${qaHtml}
+  ` : `<div class="dash-card-title" style="margin-top:18px">🎤 음악인터뷰</div><div style="color:var(--text2);font-size:.8rem">아직 작성된 내용이 없어요</div>`;
+
+  document.getElementById('sv-body').innerHTML = `
+    ${scopeNote ? `<div style="font-size:.72rem;color:var(--text2);margin-bottom:10px">${scopeNote}</div>` : ''}
+    <div class="dash-card-title">🎬 모아진 장면 (${scenes.length}개)</div>
+    ${sceneThumbs}
+    <a href="${slideshowUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;margin-top:10px;text-decoration:none;background:linear-gradient(135deg,#4CAF82,#2E7D5A)">🎬 슬라이드쇼로 열기 (새 탭)</a>
+    ${npBlock}
+    ${letterBlock}
+    ${interviewBlock}
+  `;
 }
 
 async function openStudentReport(rId, studentId){

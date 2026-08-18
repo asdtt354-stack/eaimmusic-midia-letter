@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EAIM 슬라이드쇼</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;color:#fff;width:100vw;height:100vh;overflow:hidden}
@@ -386,21 +388,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
 
 <script>
 'use strict';
-const raw = localStorage.getItem('eaim_musical_data');
 let DATA = null;
-if (raw) { try { DATA = JSON.parse(raw); } catch(e) {} }
-if (!DATA) {
-  DATA = {
-    title:'슬라이드쇼',school:'',curtainSongTitle:'우리가 써온 이야기 (Reprise)',
-    curtainLyrics:'끝나지 않는 이야기가 있어\n우리가 함께 써 내려간 그 페이지\n웃고 울며 걸어온 이 길 위에서\n우린 서로에게 빛이 되었어',
-    credits:[{role:'감독',name:'박성애'},{role:'출연',name:'전체 학생'}],
-    scenes:[
-      {title:'봄날의 학교 교정',imagePrompt:'A bright spring schoolyard with cherry blossoms, watercolor style',characters:'민준, 서아',songTitle:'오늘이 시작이야',lyrics:'바람이 불어오는 이 교정 위에\n우리의 꿈이 피어나고 있어',emotion:'설렘',musicMood:'밝고 경쾌한'},
-      {title:'방과 후 도서관',imagePrompt:'A cozy library with warm lamplight, Studio Ghibli style',characters:'민준',songTitle:'혼자만의 시간',lyrics:'아무도 없는 이 공간에서\n나는 나를 찾아가고 있어',emotion:'고요함',musicMood:'잔잔한 현악'},
-      {title:'졸업식 운동장',imagePrompt:'An outdoor graduation ceremony, students tossing caps, confetti',characters:'전교생',songTitle:'우리가 써온 이야기',lyrics:'이제 우리 날아오를 시간\n함께 써온 이야기 끝나지 않아',emotion:'성취',musicMood:'장엄한 피날레'},
-    ]
-  };
-}
 
 const EMOTION_COLORS = {
   default:{from:'#0D1B2A',to:'#16213e',accent:'#5DADE2',lyric:'#AED6F1'},
@@ -423,9 +411,77 @@ function getColor(emotion) {
 }
 
 const stage = document.getElementById('stage');
-const SCENES = DATA.scenes || [];
-const TOTAL = SCENES.length;
+let SCENES = [];
+let TOTAL = 0;
 let current = 0, autoPlay = false, autoTimer = null;
+
+// ══════════════════════════
+// 🔥 선생님용 원격 조회 — ?mode=teacher&teacher=UID&room=ROOMID(&student=번호 | &group=모둠번호)
+// ══════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBalg0f5x0ydfHxn_nzgZ1pAELvJw6PzoY",
+  authDomain: "eaim-classroom.firebaseapp.com",
+  projectId: "eaim-classroom",
+  storageBucket: "eaim-classroom.firebasestorage.app",
+  messagingSenderId: "294479576192",
+  appId: "1:294479576192:web:c60e994e319dbd2f11ba65"
+};
+let remoteDb = null, remoteReady = false;
+try { firebase.initializeApp(firebaseConfig); remoteDb = firebase.firestore(); remoteReady = true; } catch(e) { remoteReady = false; }
+
+async function fetchRemoteData(teacherUid, roomId, studentNum, groupNum) {
+  const col = remoteDb.collection('teachers').doc(teacherUid).collection('rooms').doc(roomId).collection('scenes');
+  let query = col;
+  if (studentNum) query = col.where('studentNumber', '==', studentNum);
+  else if (groupNum) query = col.where('groupNumber', '==', groupNum);
+  const snap = await query.get();
+  const scenes = snap.docs.map(d => d.data());
+  scenes.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+  let roomName = '';
+  try {
+    const roomSnap = await remoteDb.collection('teachers').doc(teacherUid).collection('rooms').doc(roomId).get();
+    roomName = roomSnap.exists ? (roomSnap.data().name || '') : '';
+  } catch(e) { /* 방 이름은 없어도 무방 */ }
+  return { title: roomName || '슬라이드쇼', school:'', scenes };
+}
+
+function defaultDemoData() {
+  return {
+    title:'슬라이드쇼',school:'',curtainSongTitle:'우리가 써온 이야기 (Reprise)',
+    curtainLyrics:'끝나지 않는 이야기가 있어\n우리가 함께 써 내려간 그 페이지\n웃고 울며 걸어온 이 길 위에서\n우린 서로에게 빛이 되었어',
+    credits:[{role:'감독',name:'박성애'},{role:'출연',name:'전체 학생'}],
+    scenes:[
+      {title:'봄날의 학교 교정',imagePrompt:'A bright spring schoolyard with cherry blossoms, watercolor style',characters:'민준, 서아',songTitle:'오늘이 시작이야',lyrics:'바람이 불어오는 이 교정 위에\n우리의 꿈이 피어나고 있어',emotion:'설렘',musicMood:'밝고 경쾌한'},
+      {title:'방과 후 도서관',imagePrompt:'A cozy library with warm lamplight, Studio Ghibli style',characters:'민준',songTitle:'혼자만의 시간',lyrics:'아무도 없는 이 공간에서\n나는 나를 찾아가고 있어',emotion:'고요함',musicMood:'잔잔한 현악'},
+      {title:'졸업식 운동장',imagePrompt:'An outdoor graduation ceremony, students tossing caps, confetti',characters:'전교생',songTitle:'우리가 써온 이야기',lyrics:'이제 우리 날아오를 시간\n함께 써온 이야기 끝나지 않아',emotion:'성취',musicMood:'장엄한 피날레'},
+    ]
+  };
+}
+
+async function resolveData() {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const teacherUid = params.get('teacher');
+  const roomId = params.get('room');
+  const studentNum = params.get('student');
+  const groupNum = params.get('group');
+
+  if (mode === 'teacher' && remoteReady && teacherUid && roomId) {
+    try {
+      DATA = await fetchRemoteData(teacherUid, roomId, studentNum, groupNum);
+    } catch(e) {
+      console.error('원격 불러오기 실패', e);
+      showToast('⚠️ 원격 데이터를 불러오지 못해 저장된 내용으로 표시해요');
+    }
+  }
+  if (!DATA) {
+    const raw = localStorage.getItem('eaim_musical_data');
+    if (raw) { try { DATA = JSON.parse(raw); } catch(e) {} }
+  }
+  if (!DATA) DATA = defaultDemoData();
+  SCENES = DATA.scenes || [];
+  TOTAL = SCENES.length;
+}
 
 let mouseX = 0, mouseY = 0, rafId = null;
 document.addEventListener('mousemove', e => {
@@ -1150,7 +1206,8 @@ function initSlideshow() {
   (async()=>{ for(let i=0;i<SCENES.length;i++) await loadBgImage(SCENES[i],i).catch(()=>{}); })();
 }
 
-window.addEventListener('load',()=>{
+window.addEventListener('load', async ()=>{
+  await resolveData();
   const makerKey = localStorage.getItem('mm_teacher_api') || localStorage.getItem('eaim_gemini_key') || '';
   if (makerKey) { GEMINI_KEY = makerKey; updateStatusBadge('gemini'); }
   else { updateStatusBadge('pollinations'); }
