@@ -313,6 +313,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <p>음악을 듣고 · 느끼고 · 그림으로 표현하다</p>
     <div id="studentRoomName" style="font-size:.8rem;color:var(--accent3);margin-bottom:10px;font-weight:700"></div>
     <div class="locked-notice" id="lockedNotice" style="display:none">🔒 선생님이 아직 수업을 열지 않았어요</div>
+    <div id="studentGroupWrap" style="display:none">
+      <input type="text" id="studentGroupInput" placeholder="모둠 번호 (예: 1)" inputmode="numeric" onkeydown="if(event.key==='Enter')doStudentLogin()">
+    </div>
     <input type="text" id="studentNumberInput" placeholder="내 번호 (예: 7)" inputmode="numeric" onkeydown="if(event.key==='Enter')doStudentLogin()">
     <button class="btn btn-primary" id="studentLoginBtn" style="width:100%;padding:13px" onclick="doStudentLogin()">🎨 시작하기</button>
   </div>
@@ -770,6 +773,7 @@ const roomDocRef     = (uid, rId) => roomsColRef(uid).doc(rId);
 const scenesColRef   = (uid, rId) => roomDocRef(uid, rId).collection('scenes');
 const studentsColRef = (uid, rId) => roomDocRef(uid, rId).collection('students');
 const sharedNewspaperRef = (uid, rId) => roomDocRef(uid, rId).collection('shared').doc('newspaper');
+const sharedGroupNewspaperRef = (uid, rId, groupNum) => roomDocRef(uid, rId).collection('sharedGroups').doc('g' + groupNum);
 
 let authLoaded=false, currentUser=null, teacherUid=null, isStudentMode=false;
 let roomId=null, currentRoom={ name:'', classOn:false };
@@ -783,6 +787,7 @@ let GEMINI_KEY = '';
 let SHEET_URL = '';
 
 let STUDENT_NUMBER = '';
+let STUDENT_GROUP = '';
 let studentAutosaveEnabled = false;
 let studentDraftTimer = null;
 
@@ -813,6 +818,8 @@ function renderStudentLoginGate(){
   document.getElementById('studentLoginBtn').disabled = !currentRoom.classOn;
   const roomNameEl = document.getElementById('studentRoomName');
   if(roomNameEl) roomNameEl.textContent = currentRoom.name ? ('🏫 '+currentRoom.name) : '';
+  const groupWrap = document.getElementById('studentGroupWrap');
+  if(groupWrap) groupWrap.style.display = currentRoom.shareScope === 'group' ? 'block' : 'none';
 }
 function enterMainApp(){
   hideAllOverlays();
@@ -902,8 +909,8 @@ async function deleteRoomUI(rId){
 function toggleRoomClass(rId, current){
   roomDocRef(teacherUid, rId).set({classOn: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
-function toggleRoomIndividual(rId, current){
-  roomDocRef(teacherUid, rId).set({individualMode: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
+function setRoomShareScope(rId, scope){
+  roomDocRef(teacherUid, rId).set({shareScope: scope},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
 function toggleRoomExpand(rId){
   expandedRoomId = expandedRoomId===rId ? null : rId;
@@ -960,6 +967,13 @@ async function doStudentLogin(){
   const num = document.getElementById('studentNumberInput').value.trim();
   if(!currentRoom.classOn){ showToast('⚠️ 선생님이 아직 수업을 열지 않았어요'); return; }
   if(!num){ showToast('⚠️ 번호를 입력해주세요'); return; }
+  if(currentRoom.shareScope === 'group'){
+    const g = document.getElementById('studentGroupInput')?.value.trim();
+    if(!g){ showToast('⚠️ 모둠 번호를 입력해주세요'); return; }
+    STUDENT_GROUP = g;
+  } else {
+    STUDENT_GROUP = '';
+  }
   STUDENT_NUMBER = num;
   enterMainApp();
 
@@ -1041,10 +1055,16 @@ function renderDashContent(){
           <div class="toggle-track ${r.classOn?'on':''}" onclick="toggleRoomClass('${r.id}', ${!!r.classOn})"><div class="toggle-thumb"></div></div>
         </div>
         <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${r.classOn?'수업 진행 중 · 학생 접속 가능':'수업 종료 · 학생 접속 차단'}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">
-          <div style="font-size:.78rem;color:var(--text2)">${r.individualMode?'👤 개인별 활동 — 서로 안 보여요':'👥 함께 보기 — 반 전체가 서로 다 보여요'}</div>
-          <div class="toggle-track ${r.individualMode?'on':''}" onclick="toggleRoomIndividual('${r.id}', ${!!r.individualMode})"><div class="toggle-thumb"></div></div>
+        <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">
+          <button class="btn btn-secondary" style="flex:1;padding:8px 4px;font-size:.7rem;${(!r.shareScope||r.shareScope==='room')?'border-color:var(--accent);color:var(--accent)':''}" onclick="setRoomShareScope('${r.id}','room')">👥 반 전체</button>
+          <button class="btn btn-secondary" style="flex:1;padding:8px 4px;font-size:.7rem;${r.shareScope==='group'?'border-color:var(--accent);color:var(--accent)':''}" onclick="setRoomShareScope('${r.id}','group')">👪 모둠별</button>
+          <button class="btn btn-secondary" style="flex:1;padding:8px 4px;font-size:.7rem;${r.shareScope==='individual'?'border-color:var(--accent);color:var(--accent)':''}" onclick="setRoomShareScope('${r.id}','individual')">👤 개인별</button>
         </div>
+        <div style="font-size:.68rem;color:var(--text2);margin-top:6px;line-height:1.5">${
+          r.shareScope==='group' ? '접속할 때 모둠 번호를 입력해요. 같은 모둠끼리만 서로 보여요.' :
+          r.shareScope==='individual' ? '서로 안 보이고 각자 자기 것만 보여요.' :
+          '반 전체가 서로 다 보여요.'
+        }</div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="toggleRoomExpand('${r.id}')">${isOpen?'▲ 접기':'👥 학생현황 · 초대 QR'}</button>
           <button class="btn btn-secondary" style="background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteRoomUI('${r.id}')">🗑️ 삭제</button>
@@ -1283,15 +1303,18 @@ function subscribeScenes() {
   if (!firebaseReady || !teacherUid || !roomId) return;
   if (unsubScenes) unsubScenes();
   let query = scenesColRef(teacherUid, roomId);
-  if (currentRoom.individualMode) {
-    query = query.where('studentNumber', '==', STUDENT_NUMBER); // 개인 모드: 내 것만
+  const scope = currentRoom.shareScope || 'room';
+  if (scope === 'individual') {
+    query = query.where('studentNumber', '==', STUDENT_NUMBER); // 개인별: 내 것만
+  } else if (scope === 'group') {
+    query = query.where('groupNumber', '==', STUDENT_GROUP); // 모둠별: 같은 모둠끼리만
   } else {
-    query = query.orderBy('createdAt', 'asc'); // 함께 보기: 반 전체 공유
+    query = query.orderBy('createdAt', 'asc'); // 반 전체: 다 같이 공유
   }
   unsubScenes = query
     .onSnapshot(snap => {
       collectedScenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (currentRoom.individualMode) {
+      if (scope !== 'room') {
         collectedScenes.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
       }
       renderSceneList();
@@ -1871,6 +1894,7 @@ async function addSceneToShow() {
     emotion: currentEmotionLabel(),
     musicMood: currentMusicMoodLabel(),
     studentNumber: STUDENT_NUMBER || null,
+    groupNumber: STUDENT_GROUP || null,
   };
 
   if (firebaseReady && teacherUid && roomId) {
@@ -1974,13 +1998,20 @@ function closeModal(id) {
   if (id === 'newspaper-modal' && unsubNewspaper) { unsubNewspaper(); unsubNewspaper = null; }
 }
 
+function currentNewspaperRef(){
+  if (!firebaseReady || !teacherUid || !roomId) return null;
+  const scope = currentRoom.shareScope || 'room';
+  if (scope === 'group') return sharedGroupNewspaperRef(teacherUid, roomId, STUDENT_GROUP || '0');
+  return sharedNewspaperRef(teacherUid, roomId); // scope==='room' 일 때
+}
 async function openNewspaper() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
-  if (!currentRoom.individualMode) {
+  if ((currentRoom.shareScope || 'room') !== 'individual') {
     try {
-      if (firebaseReady && teacherUid && roomId) {
-        const snap = await sharedNewspaperRef(teacherUid, roomId).get();
+      const ref = currentNewspaperRef();
+      if (ref) {
+        const snap = await ref.get();
         pendingNewspaperData = snap.exists ? snap.data() : null;
       }
     } catch(e) { console.warn('신문 불러오기 실패', e); }
@@ -1999,13 +2030,14 @@ async function openNewspaper() {
   updateNpLayout();
   document.getElementById('newspaper-modal').classList.add('open');
   attachNewspaperAutosave();
-  if (!currentRoom.individualMode) subscribeNewspaperShared(); // 개인 모드에서는 실시간 공유 구독 안 함
+  if ((currentRoom.shareScope || 'room') !== 'individual') subscribeNewspaperShared();
   logToSheet('음악신문열기', document.getElementById('np-title')?.value||'음악 감상 신문', collectedScenes.length+'개 장면');
 }
 function subscribeNewspaperShared(){
-  if (!firebaseReady || !teacherUid || !roomId) return;
+  const ref = currentNewspaperRef();
+  if (!ref) return;
   if (unsubNewspaper) unsubNewspaper();
-  unsubNewspaper = sharedNewspaperRef(teacherUid, roomId).onSnapshot(snap => {
+  unsubNewspaper = ref.onSnapshot(snap => {
     if (!snap.exists) return;
     const data = snap.data();
     if (data.updatedBy === STUDENT_NUMBER) return; // 방금 내가 저장한 변경은 다시 반영하지 않음
@@ -2061,15 +2093,17 @@ function scheduleNewspaperSave(){
   npSaveTimer = setTimeout(() => {
     pendingNewspaperData = collectNewspaperData();
     if (!firebaseReady || !teacherUid || !roomId) return;
-    if (currentRoom.individualMode) {
-      saveModalData('newspaper', pendingNewspaperData); // 개인 모드: 내 문서에만 저장, 다른 학생과 공유 안 됨
-    } else {
-      sharedNewspaperRef(teacherUid, roomId).set({
-        ...pendingNewspaperData,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: STUDENT_NUMBER || ''
-      }, {merge:true}).catch(e => console.warn('신문 공유 저장 실패', e));
+    if ((currentRoom.shareScope || 'room') === 'individual') {
+      saveModalData('newspaper', pendingNewspaperData); // 개인별: 내 문서에만 저장, 다른 학생과 공유 안 됨
+      return;
     }
+    const ref = currentNewspaperRef(); // scope에 따라 반 전체 문서 또는 모둠 문서
+    if (!ref) return;
+    ref.set({
+      ...pendingNewspaperData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: STUDENT_NUMBER || ''
+    }, {merge:true}).catch(e => console.warn('신문 공유 저장 실패', e));
   }, 1000);
 }
 function attachNewspaperAutosave(){
