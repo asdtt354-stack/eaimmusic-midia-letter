@@ -963,26 +963,37 @@ function updateControls() {
     const C=i===0?{accent:'#5DADE2'}:getColor(SCENES[i-1]?.emotion||'');
     if(i===current)dot.style.background=C.accent;
     dot.title=i===0?'커버':(SCENES[i-1]?.title||'');
-    dot.onclick=()=>showSlide(i); dotNav.appendChild(dot);
+    dot.onclick=()=>{ stopAutoIfPlaying(); showSlide(i); }; dotNav.appendChild(dot);
   }
   document.getElementById('btn-prev').disabled=current===0;
   document.getElementById('btn-next').disabled=current===TOTAL+1;
 }
 function goBack() { window.close(); if(!window.closed) history.back(); }
+function updateAutoBtn() {
+  const btn = document.getElementById('btn-auto'); if (!btn) return;
+  btn.textContent = autoPlay ? '⏸' : '⏵';
+  btn.style.color = autoPlay ? '#5DADE2' : 'rgba(255,255,255,.8)';
+  btn.title = autoPlay ? '일시정지 (자동재생 멈추기)' : '자동 재생 (7초마다 다음 장면)';
+}
 function toggleAuto() {
   autoPlay=!autoPlay;
-  document.getElementById('btn-auto').textContent=autoPlay?'⏸':'⏵';
-  document.getElementById('btn-auto').style.color=autoPlay?'#5DADE2':'rgba(255,255,255,.8)';
+  updateAutoBtn();
   clearInterval(autoTimer);
-  if(autoPlay){ autoTimer=setInterval(()=>{ if(current>=TOTAL){autoPlay=false;clearInterval(autoTimer);return;} showSlide(current+1); },7000); }
+  if(autoPlay){ autoTimer=setInterval(()=>{ if(current>=TOTAL){autoPlay=false;clearInterval(autoTimer);updateAutoBtn();return;} showSlide(current+1); },7000); }
 }
 document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'||e.key===' '){ if(current<TOTAL+1)showSlide(current+1); }
-  else if(e.key==='ArrowLeft'){ if(current>0)showSlide(current-1); }
+  if(e.key==='ArrowRight'||e.key===' '){ stopAutoIfPlaying(); if(current<TOTAL+1)showSlide(current+1); }
+  else if(e.key==='ArrowLeft'){ stopAutoIfPlaying(); if(current>0)showSlide(current-1); }
   else if(e.key==='Escape'){ goBack(); }
 });
-document.getElementById('btn-prev').onclick=()=>{ if(current>0)showSlide(current-1); };
-document.getElementById('btn-next').onclick=()=>{ if(current<TOTAL+1)showSlide(current+1); };
+function stopAutoIfPlaying() {
+  if (!autoPlay) return;
+  autoPlay = false;
+  clearInterval(autoTimer);
+  updateAutoBtn();
+}
+document.getElementById('btn-prev').onclick=()=>{ stopAutoIfPlaying(); if(current>0)showSlide(current-1); };
+document.getElementById('btn-next').onclick=()=>{ stopAutoIfPlaying(); if(current<TOTAL+1)showSlide(current+1); };
 document.getElementById('btn-auto').onclick=toggleAuto;
 document.getElementById('btn-exit').onclick=goBack;
 
