@@ -214,8 +214,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 @media print{
   #newspaper-modal .np-toolbar,#letter-modal .letter-toolbar,#interview-modal .interview-toolbar{display:none!important}
-  #newspaper-modal,#letter-modal,#interview-modal{position:absolute}
-  .np-paper{box-shadow:none;margin:0;padding:16px}
+  #newspaper-modal,#letter-modal,#interview-modal{
+    position:static !important;
+    inset:auto !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .np-paper,.letter-paper,.interview-paper{box-shadow:none;margin:0;padding:16px;overflow:visible}
   body>*:not(#newspaper-modal):not(#letter-modal):not(#interview-modal){display:none!important}
   .field-hint{display:none!important}
 }
@@ -646,6 +652,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <div class="interview-toolbar">
     <button onclick="closeModal('interview-modal')" style="background:rgba(255,255,255,.1);color:#fff">✕ 닫기</button>
     <span style="flex:1;font-size:14px;font-weight:bold;color:#fff">🎤 음악 인터뷰</span>
+    <select class="letter-scene-select" id="interview-scene-select" onchange="onInterviewSceneChange()"></select>
     <button onclick="generateInterviewQ()" style="background:#7C4DFF;color:#fff">✨ AI 질문 생성</button>
     <button onclick="finalizeInterview()" style="background:#C9A84C;color:#1a1a1a">🖨️ 인쇄 / PDF 저장</button>
   </div>
@@ -762,13 +769,14 @@ const roomsColRef    = (uid) => teacherDocRef(uid).collection('rooms');
 const roomDocRef     = (uid, rId) => roomsColRef(uid).doc(rId);
 const scenesColRef   = (uid, rId) => roomDocRef(uid, rId).collection('scenes');
 const studentsColRef = (uid, rId) => roomDocRef(uid, rId).collection('students');
+const sharedNewspaperRef = (uid, rId) => roomDocRef(uid, rId).collection('shared').doc('newspaper');
 
 let authLoaded=false, currentUser=null, teacherUid=null, isStudentMode=false;
 let roomId=null, currentRoom={ name:'', classOn:false };
 let dashTab='settings';
 let settings = { apiKey:'', sheetUrl:'' };
 let dashRooms=[], dashStudents=[], expandedRoomId=null;
-let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null;
+let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null, unsubNewspaper=null;
 
 // GEMINI_KEY / SHEET_URL는 settings와 동기화되는 미러 변수 (기존 함수들이 그대로 참조)
 let GEMINI_KEY = '';
@@ -893,6 +901,9 @@ async function deleteRoomUI(rId){
 }
 function toggleRoomClass(rId, current){
   roomDocRef(teacherUid, rId).set({classOn: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
+}
+function toggleRoomIndividual(rId, current){
+  roomDocRef(teacherUid, rId).set({individualMode: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
 function toggleRoomExpand(rId){
   expandedRoomId = expandedRoomId===rId ? null : rId;
@@ -1030,6 +1041,10 @@ function renderDashContent(){
           <div class="toggle-track ${r.classOn?'on':''}" onclick="toggleRoomClass('${r.id}', ${!!r.classOn})"><div class="toggle-thumb"></div></div>
         </div>
         <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${r.classOn?'수업 진행 중 · 학생 접속 가능':'수업 종료 · 학생 접속 차단'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">
+          <div style="font-size:.78rem;color:var(--text2)">${r.individualMode?'👤 개인별 활동 — 서로 안 보여요':'👥 함께 보기 — 반 전체가 서로 다 보여요'}</div>
+          <div class="toggle-track ${r.individualMode?'on':''}" onclick="toggleRoomIndividual('${r.id}', ${!!r.individualMode})"><div class="toggle-thumb"></div></div>
+        </div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="toggleRoomExpand('${r.id}')">${isOpen?'▲ 접기':'👥 학생현황 · 초대 QR'}</button>
           <button class="btn btn-secondary" style="background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteRoomUI('${r.id}')">🗑️ 삭제</button>
@@ -1267,10 +1282,18 @@ async function generateActivityNoteAI(context){
 function subscribeScenes() {
   if (!firebaseReady || !teacherUid || !roomId) return;
   if (unsubScenes) unsubScenes();
-  unsubScenes = scenesColRef(teacherUid, roomId)
-    .orderBy('createdAt', 'asc')
+  let query = scenesColRef(teacherUid, roomId);
+  if (currentRoom.individualMode) {
+    query = query.where('studentNumber', '==', STUDENT_NUMBER); // 개인 모드: 내 것만
+  } else {
+    query = query.orderBy('createdAt', 'asc'); // 함께 보기: 반 전체 공유
+  }
+  unsubScenes = query
     .onSnapshot(snap => {
       collectedScenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (currentRoom.individualMode) {
+        collectedScenes.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+      }
       renderSceneList();
       syncToLocalStorageForSlideshow();
     }, err => {
@@ -1914,6 +1937,7 @@ function renderSceneList() {
     </div>
   `).join('');
   populateLetterSceneSelect();
+  populateInterviewSceneSelect();
 }
 
 async function removeScene(idx) {
@@ -1945,11 +1969,22 @@ function goToSlideshow() {
   window.open('slideshow.html', '_blank');
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'newspaper-modal' && unsubNewspaper) { unsubNewspaper(); unsubNewspaper = null; }
+}
 
-function openNewspaper() {
+async function openNewspaper() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   const now = new Date();
+  if (!currentRoom.individualMode) {
+    try {
+      if (firebaseReady && teacherUid && roomId) {
+        const snap = await sharedNewspaperRef(teacherUid, roomId).get();
+        pendingNewspaperData = snap.exists ? snap.data() : null;
+      }
+    } catch(e) { console.warn('신문 불러오기 실패', e); }
+  }
   if (pendingNewspaperData) {
     document.getElementById('np-title').value = pendingNewspaperData.title || '음악 감상 신문';
     document.getElementById('np-school').value = pendingNewspaperData.school || '';
@@ -1964,7 +1999,28 @@ function openNewspaper() {
   updateNpLayout();
   document.getElementById('newspaper-modal').classList.add('open');
   attachNewspaperAutosave();
+  if (!currentRoom.individualMode) subscribeNewspaperShared(); // 개인 모드에서는 실시간 공유 구독 안 함
   logToSheet('음악신문열기', document.getElementById('np-title')?.value||'음악 감상 신문', collectedScenes.length+'개 장면');
+}
+function subscribeNewspaperShared(){
+  if (!firebaseReady || !teacherUid || !roomId) return;
+  if (unsubNewspaper) unsubNewspaper();
+  unsubNewspaper = sharedNewspaperRef(teacherUid, roomId).onSnapshot(snap => {
+    if (!snap.exists) return;
+    const data = snap.data();
+    if (data.updatedBy === STUDENT_NUMBER) return; // 방금 내가 저장한 변경은 다시 반영하지 않음
+    const paper = document.getElementById('np-paper');
+    if (paper && paper.contains(document.activeElement)) return; // 타이핑 중이면 잠시 대기
+    pendingNewspaperData = data;
+    document.getElementById('np-title').value = data.title || '음악 감상 신문';
+    document.getElementById('np-school').value = data.school || '';
+    document.getElementById('np-date').value = data.date || '';
+    document.getElementById('np-grade').value = data.grade || '';
+    document.getElementById('np-headline').value = data.headline || '';
+    document.getElementById('np-layout').value = data.layout || 'col2';
+    buildNpGrid();
+    updateNpLayout();
+  }, err => console.warn('신문 공유 동기화 오류', err));
 }
 function buildNpGrid() {
   const grid = document.getElementById('np-grid');
@@ -2002,7 +2058,19 @@ function collectNewspaperData(){
 }
 function scheduleNewspaperSave(){
   clearTimeout(npSaveTimer);
-  npSaveTimer = setTimeout(() => { pendingNewspaperData = collectNewspaperData(); saveModalData('newspaper', pendingNewspaperData); }, 1000);
+  npSaveTimer = setTimeout(() => {
+    pendingNewspaperData = collectNewspaperData();
+    if (!firebaseReady || !teacherUid || !roomId) return;
+    if (currentRoom.individualMode) {
+      saveModalData('newspaper', pendingNewspaperData); // 개인 모드: 내 문서에만 저장, 다른 학생과 공유 안 됨
+    } else {
+      sharedNewspaperRef(teacherUid, roomId).set({
+        ...pendingNewspaperData,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: STUDENT_NUMBER || ''
+      }, {merge:true}).catch(e => console.warn('신문 공유 저장 실패', e));
+    }
+  }, 1000);
 }
 function attachNewspaperAutosave(){
   document.getElementById('np-paper').addEventListener('input', scheduleNewspaperSave);
@@ -2077,6 +2145,23 @@ function openLetter() {
   logToSheet('음악편지열기', collectedScenes[collectedScenes.length-1]?.title||'', '');
 }
 
+function populateInterviewSceneSelect() {
+  const sel = document.getElementById('interview-scene-select');
+  if (!sel) return;
+  sel.innerHTML = collectedScenes.map((s, i) =>
+    `<option value="${i}">${i+1}. ${s.title}${s.visualType==='sketch' ? ' ✍️' : ''}</option>`).join('');
+}
+function onInterviewSceneChange() {
+  const idx = Number(document.getElementById('interview-scene-select').value || 0);
+  fillInterviewFromScene(idx);
+}
+function fillInterviewFromScene(idx) {
+  const s = collectedScenes[idx]; if (!s) return;
+  document.getElementById('interview-img').src = s.imageUrl;
+  document.getElementById('interview-song').value = s.title || '';
+  scheduleInterviewSave();
+}
+
 const defaultQuestions = [
   '이 음악을 처음 들었을 때 어떤 느낌이었나요?',
   '이 음악을 듣고 떠오른 장면이나 색깔이 있다면?',
@@ -2094,6 +2179,7 @@ function collectInterviewData(){
     song: document.getElementById('interview-song')?.value || '',
     date: document.getElementById('interview-date')?.value || '',
     questions, answers,
+    sceneIndex: Number(document.getElementById('interview-scene-select')?.value || 0),
   };
 }
 function scheduleInterviewSave(){
@@ -2110,9 +2196,15 @@ async function finalizeInterview(){
 }
 function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
-  const s = collectedScenes[collectedScenes.length - 1];
-  document.getElementById('interview-img').src = s.imageUrl;
+  populateInterviewSceneSelect();
   const now = new Date();
+  let idx = collectedScenes.length - 1;
+  if (pendingInterviewData && pendingInterviewData.sceneIndex !== undefined && collectedScenes[pendingInterviewData.sceneIndex]) {
+    idx = pendingInterviewData.sceneIndex;
+  }
+  document.getElementById('interview-scene-select').value = idx;
+  const s = collectedScenes[idx];
+  document.getElementById('interview-img').src = s.imageUrl;
   if (pendingInterviewData) {
     document.getElementById('interview-subtitle').value = pendingInterviewData.subtitle || '';
     document.getElementById('interview-song').value = pendingInterviewData.song || s.title || '';
