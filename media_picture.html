@@ -2020,6 +2020,12 @@ async function addSceneToShow() {
     groupNumber: STUDENT_GROUP || null,
   };
 
+  // ✅ Firebase 결과를 기다리지 않고 화면에 먼저 즉시 반영 (낙관적 업데이트)
+  const localId = 'local_' + Date.now();
+  collectedScenes.push({ ...scene, id: localId });
+  renderSceneList();
+  saveScenesToStorage();
+
   if (firebaseReady && teacherUid && roomId) {
     try {
       showToast('⏳ 학급 공유용으로 이미지 크기를 줄이는 중...');
@@ -2027,10 +2033,13 @@ async function addSceneToShow() {
       await scenesColRef(teacherUid, roomId)
         .add({ ...scene, imageUrl: compactImage, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       showToast('✅ 우리 반에 장면이 공유됐어요!');
+      // 이후 onSnapshot이 정상 응답하면 정식 데이터로 자동 교체됩니다
     } catch(e) {
       console.error(e);
-      showToast('❌ Firebase 저장 실패 — 잠시 후 다시 시도해주세요');
+      showToast('❌ 우리 반과는 공유되지 않았어요 (내 화면에는 남아있어요) — 인터넷 연결을 확인해주세요');
     }
+  } else {
+    showToast('⚠️ 학급 연결이 안 된 상태예요 — 이 기기에서만 보여요 (초대 링크로 다시 접속해보세요)');
   }
   const noteContext = [
     `장르/제목: ${title}`,
