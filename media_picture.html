@@ -1425,27 +1425,25 @@ async function generateActivityNoteAI(context){
 function subscribeScenes() {
   if (!firebaseReady || !teacherUid || !roomId) return;
   if (unsubScenes) unsubScenes();
-  let query = scenesColRef(teacherUid, roomId);
   const scope = currentRoom.shareScope || 'room';
-  if (scope === 'individual') {
-    query = query.where('studentNumber', '==', STUDENT_NUMBER); // 개인별: 내 것만
-  } else if (scope === 'group') {
-    query = query.where('groupNumber', '==', STUDENT_GROUP); // 모둠별: 같은 모둠끼리만
-  } else {
-    query = query.orderBy('createdAt', 'asc'); // 반 전체: 다 같이 공유
-  }
-  unsubScenes = query
-    .onSnapshot(snap => {
-      collectedScenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (scope !== 'room') {
-        collectedScenes.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
-      }
-      renderSceneList();
-      syncToLocalStorageForSlideshow();
-    }, err => {
-      console.error(err);
-      showToast('⚠️ Firebase 연결 오류 — 설정을 확인해주세요');
-    });
+  // ✅ 서버 where() 필터 대신 전체를 받아 클라이언트에서 걸러냄
+  //    (교사용 "보기" 화면과 동일한 방식 — 더 안정적으로 동작)
+  unsubScenes = scenesColRef(teacherUid, roomId).onSnapshot(snap => {
+    let all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (scope === 'individual') {
+      all = all.filter(sc => sc.studentNumber === STUDENT_NUMBER);
+    } else if (scope === 'group') {
+      all = all.filter(sc => sc.groupNumber === STUDENT_GROUP);
+    }
+    all.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+    collectedScenes = all;
+    renderSceneList();
+    syncToLocalStorageForSlideshow();
+  }, err => {
+    console.error(err);
+    showToast('⚠️ Firebase 연결 오류 — 설정을 확인해주세요');
+  });
+}
 }
 
 let sketchCtx = null, sketching = false, sketchColor = '#1a1a2e', sketchErasing = false;
