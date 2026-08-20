@@ -1903,6 +1903,7 @@ function buildFinalPrompt() {
     const kr = document.getElementById('prompt-kr').value.trim();
     if (kr) parts.push(kr);
   }
+  parts.push('no text, no words, no letters, no writing, no captions, no watermark, no signage with readable text');
   parts.push('cinematic, high quality, 16:9');
   return parts.join(', ');
 }
