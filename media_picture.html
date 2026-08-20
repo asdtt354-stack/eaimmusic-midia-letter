@@ -555,6 +555,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div class="result-prompt-text" id="result-prompt-text"></div>
         <div class="result-actions">
           <button class="btn btn-primary" onclick="downloadImage()">⬇ 이미지 다운로드</button>
+          <button class="btn btn-secondary" onclick="copyImageToClipboard()">📋 이미지 복사</button>
           <button class="btn btn-secondary" onclick="generateImage()">🔄 다시 생성</button>
           <button class="btn btn-primary" onclick="addSceneToShow()" style="background:#4CAF82;border-color:#4CAF82">➕ 이 장면 모으기</button>
         </div>
@@ -1958,6 +1959,19 @@ function downloadImage() {
   showToast('⬇ 이미지 저장됐어요!');
 }
 
+async function copyImageToClipboard() {
+  if (!generatedImageUrl) { showToast('⚠️ 먼저 이미지를 생성해주세요'); return; }
+  try {
+    const res = await fetch(generatedImageUrl);
+    const blob = await res.blob();
+    await navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
+    showToast('📋 이미지가 복사됐어요! 원하는 곳에 Ctrl+V로 붙여넣으세요');
+  } catch(e) {
+    console.error(e);
+    showToast('⚠️ 이 브라우저에서는 이미지 복사가 안 될 수 있어요 — 다운로드를 이용해주세요');
+  }
+}  
+  
 const SLIDESHOW_STORAGE_KEY = 'eaim_musical_data';
 
 function currentEmotionLabel() {
@@ -2085,8 +2099,9 @@ function renderSceneList() {
       <img src="${s.imageUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}${s.studentNumber?` <span style="color:var(--text2);font-weight:400">· ${s.studentNumber}번</span>`:''}</div>
-        <div style="font-size:11px;color:var(--text2)">${s.characters || '참여자 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''}</div>
+        <div style="font-size:11px;color:var(--text2)">${s.characters || '참여자 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''} ${s.isRepeat ? '· 🔁 반복 구간' : ''}</div>
       </div>
+      <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="duplicateScene(${i})">📋 복제</button>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="removeScene(${i})">✕</button>
     </div>
   `).join('');
@@ -2094,6 +2109,32 @@ function renderSceneList() {
   populateInterviewSceneSelect();
 }
 
+async function duplicateScene(idx) {
+  const original = collectedScenes[idx];
+  if (!original) return;
+  const newTitle = prompt('복제된 장면의 제목을 정해주세요 (예: 재현부 — 주제 회귀)', original.title + ' (반복)');
+  if (newTitle === null) return; // 취소
+  const dup = { ...original, title: newTitle, isRepeat: true };
+  delete dup.id;
+
+  const localId = 'local_' + Date.now();
+  collectedScenes.push({ ...dup, id: localId });
+  renderSceneList();
+  saveScenesToStorage();
+
+  if (firebaseReady && teacherUid && roomId) {
+    try {
+      await scenesColRef(teacherUid, roomId).add({ ...dup, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      showToast('✅ 장면을 복제했어요 — 같은 이미지가 하나 더 추가됐어요');
+    } catch(e) {
+      console.error(e);
+      showToast('❌ 복제 공유 실패 (내 화면엔 추가됐어요)');
+    }
+  } else {
+    showToast('✅ 장면을 복제했어요 (이 기기에서만 보여요)');
+  }
+} 
+  
 async function removeScene(idx) {
   const scene = collectedScenes[idx];
   if (firebaseReady && teacherUid && roomId && scene && scene.id) {
