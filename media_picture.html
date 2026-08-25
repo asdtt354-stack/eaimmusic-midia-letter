@@ -2161,7 +2161,7 @@ async function clearScenes() {
 function goToSlideshow() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   saveScenesToStorage();
-  window.open('slideshow.html', '_blank');
+ location.href = 'slideshow.html';
 }
 
 function closeModal(id) {
