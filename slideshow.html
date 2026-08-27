@@ -298,8 +298,11 @@ select.bubble-ctrl-btn{padding:5px 8px}
 <div id="char-panel">
   <h4>🎭 캐릭터 레이어</h4>
   <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">추가된 캐릭터: <span id="char-count">0</span>/3</div>
-  <input id="char-url-input" placeholder="캐릭터 이미지 URL">
-  <button class="char-panel-btn" onclick="applyCharLayer()">✓ 캐릭터 추가</button>
+  <input id="char-url-input" placeholder="캐릭터 이미지 URL (인터넷 주소가 있을 때)">
+  <button class="char-panel-btn" onclick="applyCharLayer()">✓ URL로 추가</button>
+  <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.3);margin:6px 0">— 또는 —</div>
+  <input type="file" id="char-file-input" accept="image/*" style="display:none" onchange="applyCharLayerFromFile(this)">
+  <button class="char-panel-btn" style="background:rgba(255,213,79,.12);border-color:rgba(255,213,79,.35);color:#ffd54f" onclick="document.getElementById('char-file-input').click()">📁 내 기기에서 이미지 파일 올리기</button>
   <button class="char-panel-btn remove" onclick="removeCharLayer()">✕ 선택된 캐릭터 제거</button>
   <button class="char-panel-btn remove" onclick="clearAllChars()" style="opacity:.85">🗑 전체 제거</button>
   <button class="char-panel-btn anim" onclick="toggleAnimPanel()">🎬 애니메이션 (선택된 캐릭터)</button>
@@ -390,6 +393,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화로 영상 저장하기">⏺</button>
   <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과(안개·비·눈 등)">🎆</button>
   <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면으로 재생">⛶</button>
+  <button class="ctrl-btn" id="btn-save-deco" onclick="saveDecorations(true)" title="지금 배치한 캐릭터·말풍선·효과를 저장하기" style="color:#69f0ae">✅</button>
   <button class="ctrl-btn" id="btn-ppt" onclick="downloadPPTX()" title="지금 화면(효과·캐릭터·말풍선 포함)을 PPT로 저장하기">📊</button>
 </div>
 <div id="key-hint">← → 키보드 | F 전체화면 | ESC 종료</div>
@@ -637,10 +641,23 @@ function makeCharDraggable(el) {
 function applyCharLayer() {
   const url = document.getElementById('char-url-input').value.trim();
   if (!url) { showToast('⚠️ 캐릭터 이미지 URL을 입력해주세요'); return; }
-  const slide = getCurrentSlideEl(); if (!slide) return;
+  const ok = addCharacterImage(url);
+  if (ok) document.getElementById('char-url-input').value = '';
+}
+function applyCharLayerFromFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('⚠️ 이미지 파일만 올릴 수 있어요'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => { addCharacterImage(reader.result); input.value=''; };
+  reader.onerror = () => { showToast('⚠️ 파일을 읽지 못했어요'); input.value=''; };
+  reader.readAsDataURL(file);
+}
+function addCharacterImage(src) {
+  const slide = getCurrentSlideEl(); if (!slide) return false;
   const container = slide.querySelector('.parallax-container') || slide;
   const existing = container.querySelectorAll('.char-wrap');
-  if (existing.length >= 3) { showToast('⚠️ 캐릭터는 한 장면에 최대 3명까지 추가할 수 있어요'); return; }
+  if (existing.length >= 3) { showToast('⚠️ 캐릭터는 한 장면에 최대 3명까지 추가할 수 있어요'); return false; }
   const id = 'char_' + (++charIdCounter);
   const slot = existing.length;
   const wrap = document.createElement('div');
@@ -649,7 +666,7 @@ function applyCharLayer() {
   wrap.style.left = (CHAR_SLOT_LEFT_PERCENTS[slot] || 30) + '%';
   const img = document.createElement('img');
   img.className = 'char-layer';
-  img.src = url; img.alt = '캐릭터';
+  img.src = src; img.alt = '캐릭터';
   img.onerror = () => { showToast('⚠️ 이미지를 불러올 수 없어요'); wrap.remove(); updateCharCount(); };
   const delBtn = document.createElement('button');
   delBtn.className = 'char-del-btn';
@@ -664,11 +681,12 @@ function applyCharLayer() {
   wrap.appendChild(img); wrap.appendChild(delBtn);
   makeCharDraggable(wrap);
   container.appendChild(wrap);
-  document.getElementById('char-url-input').value = '';
   selectChar(id);
   updateCharCount();
   showToast('✅ 캐릭터 추가됨! 드래그해서 위치를 옮길 수 있어요');
+  return true;
 }
+
 function removeCharLayer() {
   const slide = getCurrentSlideEl(); if (!slide) return;
   let target = selectedCharId ? slide.querySelector(`.char-wrap[data-char-id="${selectedCharId}"]`) : null;
@@ -1212,9 +1230,95 @@ function initSlideshow() {
   SCENES.forEach((s,i)=>buildScene(s,i));
   buildEnding();
   document.getElementById('controls').style.display='flex';
+  restoreDecorations();
   showSlide(0);
   (async()=>{ for(let i=0;i<SCENES.length;i++) await loadBgImage(SCENES[i],i).catch(()=>{}); })();
 }
+
+// ══════════════════════════
+// ✅ 캐릭터·말풍선·효과 저장/복원 — 새로고침·재접속해도 배치가 유지되도록
+// ══════════════════════════
+const DECORATION_STORAGE_KEY = 'eaim_slideshow_decorations';
+function getSlideKeyEl(key){
+  if (key==='cover') return document.getElementById('cover-slide');
+  if (key==='end') return document.getElementById('end-slide');
+  return document.getElementById(`scene-slide-${key}`);
+}
+function collectSlideDecorations(container){
+  if(!container) return {chars:[],bubbles:[]};
+  const chars=[...container.querySelectorAll('.char-wrap')].map(wrap=>{
+    const img=wrap.querySelector('.char-layer');
+    const animClass=(img?.className.match(/char-anim-\S+/g)||[]).filter(c=>['char-anim-float','char-anim-breathe','char-anim-sway'].includes(c));
+    return { src: img?.getAttribute('src')||'', left: wrap.style.left||'', top: wrap.style.top||'', loopAnim: animClass[0]||'' };
+  });
+  const bubbles=[...container.querySelectorAll('.speech-bubble')].map(b=>{
+    const tailClass=(b.className.match(/tail-\S+/)||[])[0]||'tail-left';
+    const nameEl=b.querySelector('.bubble-name');
+    const textEl=b.querySelector('span');
+    return { name: nameEl?nameEl.textContent:'', text: textEl?textEl.textContent:'', tail: tailClass, left: b.style.left||'', top: b.style.top||'' };
+  });
+  return { chars, bubbles };
+}
+function saveDecorations(showConfirm){
+  const data = { effects: Array.from(activeEffects), scenes: {} };
+  data.scenes['cover'] = collectSlideDecorations(getSlideKeyEl('cover'));
+  data.scenes['end'] = collectSlideDecorations(getSlideKeyEl('end'));
+  for (let i=0;i<TOTAL;i++) data.scenes[i] = collectSlideDecorations(getSlideKeyEl(i));
+  try{
+    localStorage.setItem(DECORATION_STORAGE_KEY, JSON.stringify(data));
+    if(showConfirm) showToast('✅ 캐릭터·말풍선·효과 저장 완료! 새로고침해도 유지돼요');
+  }catch(e){
+    if(showConfirm) showToast('❌ 저장 실패: '+e.message);
+  }
+}
+function restoreCharWrap(container, item){
+  if(!item.src) return;
+  const id = 'char_' + (++charIdCounter);
+  const wrap = document.createElement('div');
+  wrap.className = 'char-wrap';
+  wrap.dataset.charId = id;
+  wrap.style.left = item.left || '30%';
+  if (item.top) wrap.style.top = item.top;
+  const img = document.createElement('img');
+  img.className = 'char-layer' + (item.loopAnim ? (' '+item.loopAnim) : '');
+  img.src = item.src; img.alt = '캐릭터';
+  img.onerror = () => { wrap.remove(); };
+  const delBtn = document.createElement('button');
+  delBtn.className = 'char-del-btn';
+  delBtn.textContent = '✕';
+  delBtn.onclick = (e) => { e.stopPropagation(); wrap.remove(); if(selectedCharId===id) selectedCharId=null; updateCharCount(); };
+  wrap.appendChild(img); wrap.appendChild(delBtn);
+  makeCharDraggable(wrap);
+  container.appendChild(wrap);
+}
+function restoreBubbleEl(container, item){
+  if(!item.text) return;
+  const bubble=document.createElement('div');
+  bubble.className=`speech-bubble ${item.tail||'tail-left'}`;
+  bubble.style.left=item.left||'30%';bubble.style.top=item.top||'55%';
+  bubble.innerHTML=`${item.name?`<div class="bubble-name">${item.name}</div>`:''}<span>${item.text}</span><button class="bubble-del" onclick="this.parentElement.remove()">✕</button>`;
+  makeDraggable(bubble);
+  container.appendChild(bubble);
+}
+function restoreDecorations(){
+  let raw; try{ raw = localStorage.getItem(DECORATION_STORAGE_KEY); }catch(e){ return; }
+  if(!raw) return;
+  let data; try{ data = JSON.parse(raw); }catch(e){ return; }
+  if(!data || !data.scenes) return;
+  Object.keys(data.scenes).forEach(key=>{
+    const container = getSlideKeyEl(key);
+    if(!container) return;
+    const target = container.querySelector('.parallax-container') || container;
+    const d = data.scenes[key];
+    (d.chars||[]).forEach(item=>restoreCharWrap(target, item));
+    (d.bubbles||[]).forEach(item=>restoreBubbleEl(container, item));
+  });
+  (data.effects||[]).forEach(type=>{
+    try{ toggleEffect(type); }catch(e){}
+  });
+  if((data.effects||[]).length) showToast('✅ 저장된 캐릭터·말풍선·효과를 불러왔어요');
+}
+
 
 window.addEventListener('load', async ()=>{
   await resolveData();
