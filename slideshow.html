@@ -6,6 +6,8 @@
 <title>EAIM 슬라이드쇼</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;color:#fff;width:100vw;height:100vh;overflow:hidden}
@@ -110,6 +112,10 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .api-status.gemini{border-color:rgba(93,173,226,.4);color:#5DADE2}
 .api-status.pollinations{border-color:rgba(105,240,174,.3);color:#69f0ae}
 #blackout{position:fixed;inset:0;z-index:500;background:#000;opacity:0;pointer-events:none;transition:opacity .5s ease}
+#ppt-progress{position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#ppt-progress.show{display:flex}
+.ppt-spinner{width:48px;height:48px;border:4px solid rgba(93,173,226,.25);border-top:4px solid #5DADE2;border-radius:50%;animation:spin 1s linear infinite}
+#ppt-progress-text{font-size:14px;color:#fff;letter-spacing:1px}
 #blackout.fade-in{opacity:1;pointer-events:auto}
 #blackout.fade-out{opacity:0;pointer-events:none}
 #blackout-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.15);font-size:clamp(12px,2vw,18px);letter-spacing:6px;text-transform:uppercase}
@@ -278,6 +284,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
 <div id="signal-indicator">🚦 <span id="signal-text">음향 신호 발신 중</span></div>
 <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-text">녹화 중... 0:00</span></div>
 <div id="blackout"><div id="blackout-text"></div></div>
+<div id="ppt-progress"><div class="ppt-spinner"></div><div id="ppt-progress-text">PPT 생성 준비 중...</div></div>
 
 <div id="music-upload-bar">
   <div class="music-dot" id="music-upload-dot"></div>
@@ -369,7 +376,8 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="fx-effect-btn" onclick="toggleEffect('light')">✨ 빛</button>
   <button class="fx-effect-btn" onclick="toggleEffect('snow')">❄️ 눈</button>
   <button class="fx-effect-btn" onclick="toggleEffect('star')">🌟 별</button>
-  <button class="fx-effect-btn" onclick="clearEffects()" style="border-color:#f44336;color:#f44336">✕ 끄기</button>
+  <button class="fx-effect-btn" onclick="clearEffects()" style="border-color:#f44336;color:#f44336">🗑 효과 전체 끄기</button>
+  <button class="fx-effect-btn" onclick="toggleFxPanel()" style="border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.6)">✕ 패널 닫기 (효과 유지)</button>
 </div>
 <div id="controls" style="display:none">
   <button class="ctrl-btn" id="btn-exit" title="처음으로 나가기">✕</button>
@@ -382,6 +390,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화로 영상 저장하기">⏺</button>
   <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과(안개·비·눈 등)">🎆</button>
   <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면으로 재생">⛶</button>
+  <button class="ctrl-btn" id="btn-ppt" onclick="downloadPPTX()" title="지금 화면(효과·캐릭터·말풍선 포함)을 PPT로 저장하기">📊</button>
 </div>
 <div id="key-hint">← → 키보드 | F 전체화면 | ESC 종료</div>
 <button id="back-btn" onclick="goBack()">↩ 처음으로</button>
@@ -551,6 +560,7 @@ async function loadBgImage(scene, idx) {
   const spinner = document.getElementById(`bg-spinner-${idx}`);
   if (scene.imageUrl && (scene.imageUrl.startsWith('http') || scene.imageUrl.startsWith('data:'))) {
     const label = scene.imageUrl.startsWith('data:') ? '🎨 미디어픽쳐' : '📌 URL';
+    if(spinner) spinner.style.display='none';
     setImgSrc(idx, scene.imageUrl, label); return;
   }
   if (!scene.imagePrompt) { if(spinner) spinner.style.display='none'; return; }
@@ -1317,6 +1327,92 @@ function clearEffects(){
   activeEffects.clear();
   document.getElementById('fx-overlay').innerHTML='';
   document.querySelectorAll('.fx-effect-btn').forEach(b=>b.classList.remove('active'));
+}
+
+// ══════════════════════════
+// 📊 PPT 다운로드 — 현재 화면(효과·캐릭터·말풍선 포함) 상태를 슬라이드별로 캡처
+// ══════════════════════════
+function doShowSlideInstant(idx){
+  const old=getSlideEl(current);
+  if (old) old.className=old.className.replace('visible','hidden');
+  current=idx;
+  const el=getSlideEl(idx); if (!el) return;
+  el.className=el.className.replace('hidden','visible');
+  if (idx>=1&&idx<=TOTAL) {
+    const si=idx-1;
+    const mc=document.getElementById(`mc-${si}`),lp=document.getElementById(`lp-${si}`);
+    if(mc){mc.classList.remove('hidden');mc.classList.add('visible');}
+    if(lp){lp.classList.remove('hidden');lp.classList.add('visible');}
+    const lines=(SCENES[si].lyrics||'').split('\n').filter(Boolean);
+    lines.forEach((_,li)=>{ const ll=document.getElementById(`ll-${si}-${li}`);if(ll)ll.style.opacity='1'; });
+  }
+  if (idx===TOTAL+1) {
+    const cp=document.getElementById('curtain-phase'),cr=document.getElementById('credits-phase');
+    if(cp){ cp.style.opacity='1'; cp.style.pointerEvents='auto'; }
+    if(cr){ cr.style.opacity='0'; cr.style.pointerEvents='none'; }
+    const lyricLines=(DATA.curtainLyrics||'').split('\n').filter(Boolean);
+    lyricLines.forEach((_,li)=>{ const el=document.getElementById(`cl-${li}`); if(el) el.style.opacity='1'; });
+  }
+  mouseX=0; mouseY=0;
+}
+
+async function downloadPPTX(){
+  if (typeof html2canvas === 'undefined' || typeof PptxGenJS === 'undefined') {
+    showToast('⚠️ PPT 도구를 불러오지 못했어요. 인터넷 연결을 확인해주세요');
+    return;
+  }
+  const progressEl=document.getElementById('ppt-progress'), progressText=document.getElementById('ppt-progress-text');
+  stopAutoIfPlaying();
+  const startSlide=current;
+
+  document.getElementById('controls').style.display='none';
+  document.getElementById('key-hint').style.display='none';
+  document.getElementById('back-btn').style.display='none';
+  const apiStatusEl=document.getElementById('api-status'); if(apiStatusEl) apiStatusEl.style.display='none';
+  const signalEl=document.getElementById('signal-indicator'); if(signalEl) signalEl.style.display='none';
+  ['bubble-panel','char-panel','fx-panel'].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.remove('show','open');});
+  progressEl.classList.add('show');
+  progressText.textContent='PPT 생성 준비 중...';
+
+  try{
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name:'EAIM', width:13.333, height:7.5 });
+    pptx.layout='EAIM';
+
+    const total = TOTAL+2; // 커버 + 각 장면 + 커튼콜
+    for(let i=0;i<total;i++){
+      doShowSlideInstant(i);
+      await new Promise(r=>setTimeout(r,400));
+      progressText.textContent=`슬라이드 캡처 중... (${i+1}/${total})`;
+      try{
+        const canvas = await html2canvas(document.body, {
+          backgroundColor:'#0D1B2A', useCORS:true, allowTaint:true,
+          scale:1, width:window.innerWidth, height:window.innerHeight
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        const slide = pptx.addSlide();
+        slide.background = { color:'0D1B2A' };
+        slide.addImage({ data:imgData, x:0, y:0, w:13.333, h:7.5 });
+      }catch(e){
+        console.warn('슬라이드 캡처 실패', i, e);
+      }
+    }
+
+    progressText.textContent='PPT 파일 저장 중...';
+    const title = (DATA.title && DATA.title.trim()) ? DATA.title.trim() : '미디어픽쳐';
+    await pptx.writeFile({ fileName:`${title}_EAIM.pptx` });
+    showToast('✅ PPT 다운로드 완료!');
+  }catch(e){
+    console.error(e);
+    showToast('❌ PPT 생성 중 오류가 발생했어요: '+e.message);
+  }finally{
+    progressEl.classList.remove('show');
+    document.getElementById('controls').style.display='flex';
+    document.getElementById('key-hint').style.display='block';
+    if(apiStatusEl) apiStatusEl.style.display='flex';
+    doShowSlideInstant(startSlide);
+    updateControls();
+  }
 }
 </script>
 </body>
