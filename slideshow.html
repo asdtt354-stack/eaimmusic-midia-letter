@@ -615,6 +615,14 @@ function selectChar(id) {
   const el = document.querySelector(`.char-wrap[data-char-id="${id}"]`);
   if (el) el.classList.add('selected');
 }
+function deselectAllChars() {
+  document.querySelectorAll('.char-wrap').forEach(w => w.classList.remove('selected'));
+  selectedCharId = null;
+}
+document.getElementById('stage').addEventListener('click', (e) => {
+  if (e.target.closest('.char-wrap') || e.target.closest('.speech-bubble')) return;
+  deselectAllChars();
+});
 function makeCharDraggable(el) {
   let sx, sy, sl, st, moved;
   el.addEventListener('mousedown', e => {
@@ -847,6 +855,7 @@ document.querySelectorAll('.rec-checklist input[type=checkbox]').forEach(c => {
 });
 function confirmStartRecording() {
   closeRecChecklist();
+  deselectAllChars();
   beginScreenRecording();
 }
 async function beginScreenRecording() {
@@ -1467,6 +1476,7 @@ async function downloadPPTX(){
   }
   const progressEl=document.getElementById('ppt-progress'), progressText=document.getElementById('ppt-progress-text');
   stopAutoIfPlaying();
+  deselectAllChars();
   const startSlide=current;
 
   document.getElementById('controls').style.display='none';
