@@ -1436,7 +1436,13 @@ function subscribeScenes() {
     } else if (scope === 'group') {
       all = all.filter(sc => sc.groupNumber === STUDENT_GROUP);
     }
-    all.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+    all.sort((a,b) => {
+      const oa = a.order, ob = b.order;
+      if (oa != null && ob != null) return oa - ob;
+      if (oa != null) return -1;
+      if (ob != null) return 1;
+      return (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0);
+    });
     collectedScenes = all;
     renderSceneList();
     syncToLocalStorageForSlideshow();
@@ -2101,12 +2107,39 @@ function renderSceneList() {
         <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${s.title}${s.studentNumber?` <span style="color:var(--text2);font-weight:400">· ${s.studentNumber}번</span>`:''}</div>
         <div style="font-size:11px;color:var(--text2)">${s.characters || '참여자 미입력'} ${s.emotion ? '· ' + s.emotion : ''} ${s.visualType==='sketch' ? '· ✍️ 손그림' : ''} ${s.isRepeat ? '· 🔁 반복 구간' : ''}</div>
       </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button class="btn btn-secondary" style="padding:2px 8px;font-size:10px;line-height:1${i===0?';opacity:.3;cursor:default':''}" onclick="moveScene(${i},-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="btn btn-secondary" style="padding:2px 8px;font-size:10px;line-height:1${i===collectedScenes.length-1?';opacity:.3;cursor:default':''}" onclick="moveScene(${i},1)" ${i===collectedScenes.length-1?'disabled':''}>▼</button>
+      </div>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="duplicateScene(${i})">📋 복제</button>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="removeScene(${i})">✕</button>
     </div>
   `).join('');
   populateLetterSceneSelect();
   populateInterviewSceneSelect();
+}
+
+async function moveScene(idx, dir) {
+  const target = idx + dir;
+  if (target < 0 || target >= collectedScenes.length) return;
+  [collectedScenes[idx], collectedScenes[target]] = [collectedScenes[target], collectedScenes[idx]];
+  renderSceneList();
+  saveScenesToStorage();
+
+  if (firebaseReady && teacherUid && roomId) {
+    try {
+      const batch = db.batch();
+      collectedScenes.forEach((sc, i) => {
+        if (sc.id && !String(sc.id).startsWith('local_')) {
+          batch.update(scenesColRef(teacherUid, roomId).doc(sc.id), { order: i });
+        }
+      });
+      await batch.commit();
+    } catch(e) {
+      console.error(e);
+      showToast('⚠️ 순서는 바뀌었지만 반 공유 저장에는 실패했어요');
+    }
+  }
 }
 
 async function duplicateScene(idx) {
