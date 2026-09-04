@@ -177,7 +177,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .np-article{break-inside:avoid}
 .np-article img{width:100%;border:1px solid #ddd;display:block}
 .np-caption{font-size:11px;color:#333;margin-top:6px;line-height:1.6;border-left:3px solid #C9A84C;padding-left:8px}
-.field-hint{font-size:11px;color:#8B6914;background:#FFF8E0;border:1px dashed #D4B860;border-radius:6px;padding:6px 10px;margin-bottom:6px;line-height:1.6}
+.field-hint{font-size:11px;color:#8B6914;background:#FFF8E0;border:1px dashed #D4B860;border-radius:6px;padding:6px 10px;margin-bottom:6px;line-height:1.6;white-space:pre-wrap}
+.field-hint:empty{display:none}
+#newspaper-modal.np-preview .field-hint{display:none}
+.np-paper textarea,.letter-paper textarea,.interview-paper textarea{overflow:hidden}
 .np-article-title{font-size:14px;font-weight:900;margin-bottom:4px;color:#1a1a1a}
 .np-input{width:100%;border:none;border-bottom:1px dashed #aaa;background:transparent;font-size:inherit;font-family:inherit;outline:none;color:#1a1a1a;padding:2px}
 
@@ -222,6 +225,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     overflow:visible !important;
   }
   .np-paper,.letter-paper,.interview-paper{box-shadow:none;margin:0;padding:16px;overflow:visible}
+  .np-paper textarea,.letter-paper textarea,.interview-paper textarea{overflow:hidden!important;resize:none}
+  .np-article img{break-inside:avoid;page-break-inside:avoid}
   body>*:not(#newspaper-modal):not(#letter-modal):not(#interview-modal){display:none!important}
   .field-hint{display:none!important}
 }
@@ -598,7 +603,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <div id="newspaper-modal">
   <div class="np-toolbar">
     <button class="np-close-btn" onclick="closeModal('newspaper-modal')">✕ 닫기</button>
-    <span style="flex:1;font-size:14px;font-weight:bold">📰 음악 감상 신문 편집</span>
+    <span style="flex:1;font-size:14px;font-weight:bold" id="np-toolbar-title">📰 음악 감상 신문 편집</span>
     <select id="np-layout" onchange="updateNpLayout()" style="padding:6px;border-radius:6px;border:none;font-family:inherit;font-size:12px">
       <option value="col1">1단 레이아웃</option>
       <option value="col2" selected>2단 레이아웃</option>
@@ -641,7 +646,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <input class="letter-input" id="letter-song" placeholder="음악 제목 / 아티스트" style="font-size:13px;font-weight:bold;color:#8B4513">
       </div>
     </div>
-    <div class="field-hint">💡 이렇게 써보세요: 이 음악을 처음 들었을 때 느낌 → 어떤 장면·색깔·감정이 떠올랐는지 → 이 음악을 받는 사람과 나누고 싶은 이유, 순서로 써보면 편해요</div>
+    <div class="field-hint" id="letter-hint"></div>
     <div class="letter-body">
       <textarea class="letter-textarea" id="letter-body" style="min-height:320px" placeholder="음악을 듣고 느낀 감정을 편지로 써보세요...&#10;&#10;이 음악을 들었을 때 나는...&#10;&#10;이 음악에서 떠오른 장면이나 색깔은...&#10;&#10;네가 이 음악을 듣는다면...&#10;&#10;음악이 나에게 전해주는 메시지는..."></textarea>
     </div>
@@ -844,6 +849,45 @@ function enterTeacherDashboard(){
 }
 
 // ══════════════════════════
+// ✏️ 학생 안내 문구 (선생님이 설정 탭에서 바꿀 수 있음 — 비워두면 기본 문구)
+// ══════════════════════════
+const DEFAULT_HINTS = {
+  npHint: '💡 이렇게 써보세요: 이 장면에서 어떤 음악 요소(리듬·선율·음색 등)가 들렸는지, 왜 이 그림을 골랐는지, 이 장면이 나타내는 감정은 무엇인지',
+  npHeadline: '신문 헤드라인을 입력하세요',
+  npCaptionPlaceholder: '음악을 들으며 느낀 점을 자세히 적어보세요...',
+  letterHint: '💡 이렇게 써보세요: 이 음악을 처음 들었을 때 느낌 → 어떤 장면·색깔·감정이 떠올랐는지 → 이 음악을 받는 사람과 나누고 싶은 이유, 순서로 써보면 편해요',
+  interviewHint: '💡 구체적으로 써보세요: 어떤 부분(리듬·선율·가사·음색 등)이 그렇게 느껴졌는지, 예시를 들어서 답하면 더 좋아요',
+};
+function hintText(key){
+  const custom = (settings && settings.hints && settings.hints[key]);
+  // 선생님이 "-"만 적으면 아예 안 보이게(빈 문구)
+  if (custom === '-') return '';
+  return (custom && custom.trim()) ? custom : DEFAULT_HINTS[key];
+}
+function escHtml(str){ return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let hintSaveTimer=null;
+function saveHintDash(key, v){
+  clearTimeout(hintSaveTimer);
+  hintSaveTimer = setTimeout(()=>{
+    const hints = {...(settings.hints||{}), [key]: v};
+    setSettings(teacherUid, {hints});
+  }, 600);
+}
+// 긴 글도 인쇄/PDF에서 잘리지 않도록 textarea 높이를 내용에 맞게 자동 확장
+function autoGrowTextarea(ta){
+  if (!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = (ta.scrollHeight + 4) + 'px';
+}
+function autoGrowAll(containerId){
+  const box = document.getElementById(containerId); if (!box) return;
+  box.querySelectorAll('textarea').forEach(autoGrowTextarea);
+}
+document.addEventListener('input', e => {
+  if (e.target && e.target.tagName === 'TEXTAREA' && e.target.closest('#np-paper,#letter-paper,#interview-paper')) autoGrowTextarea(e.target);
+});
+
+// ══════════════════════════
 // 설정 (apiKey / classOn / sheetUrl) — 교사 uid 스코프
 // ══════════════════════════
 function subscribeSettings(uid, cb){
@@ -1041,6 +1085,18 @@ function renderDashContent(){
     <div class="dash-card"><div class="dash-card-title">📊 구글시트 연동 (선택)</div>
       <input class="dash-input" type="text" id="sheetUrlInput" value="${settings.sheetUrl||''}" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveSheetUrlDash(this.value)">
     </div>
+    <div class="dash-card"><div class="dash-card-title">✏️ 학생 안내 문구 바꾸기 (선택)</div>
+      <div style="font-size:.7rem;color:var(--text2);margin-bottom:10px;line-height:1.6">학생 화면의 노란 도움말 상자와 안내 문구를 선생님 수업에 맞게 바꿀 수 있어요. 비워두면 기본 문구가 나오고, <b>-</b> 하나만 적으면 아예 숨겨져요. 선생님 계정의 모든 반에 함께 적용돼요.</div>
+      ${[
+        ['npHint','📰 음악신문 · 기사 도움말(노란 박스)'],
+        ['npHeadline','📰 음악신문 · 헤드라인 칸 안내'],
+        ['npCaptionPlaceholder','📰 음악신문 · 기사 입력칸 안내'],
+        ['letterHint','💌 음악편지 · 도움말(노란 박스)'],
+        ['interviewHint','🎤 음악인터뷰 · 답변 도움말(노란 박스)'],
+      ].map(([k,label])=>`
+      <div style="font-size:.72rem;color:var(--text);margin:8px 0 4px">${label}</div>
+      <textarea class="dash-input" style="min-height:52px;line-height:1.6;resize:vertical" placeholder="${escHtml(DEFAULT_HINTS[k])}" oninput="saveHintDash('${k}', this.value)">${escHtml(settings.hints?.[k]||'')}</textarea>`).join('')}
+    </div>
     <div style="background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:16px;padding:16px;font-size:.78rem;color:var(--text2);line-height:1.9">
       💡 <strong style="color:var(--text)">사용 순서</strong><br>1. API 키 입력 → 2. "🏫 반 관리" 탭에서 반 만들기 → 3. 반마다 수업 ON + 초대 링크 공유</div>`;
   } else {
@@ -1164,15 +1220,29 @@ async function openStudentView(rId, studentId){
     const studentSnap = await studentsColRef(teacherUid, rId).doc(studentId).get();
     const studentData = studentSnap.exists ? studentSnap.data() : {};
     const scenesSnap = await scenesColRef(teacherUid, rId).get();
-    const scenes = scenesSnap.docs.map(d=>d.data())
+    const allScenes = scenesSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+    const scenes = allScenes
       .filter(sc=>sc.studentNumber===studentId)
       .sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    // 신문 기사 i번 ↔ 장면 i번이 짝이므로, 학생 화면(subscribeScenes)과 똑같은 공유 범위·정렬로 장면을 모음
+    const npScope = room.shareScope || 'room';
+    let npScenes = allScenes;
+    if (npScope === 'individual') npScenes = allScenes.filter(sc=>sc.studentNumber===studentId);
+    else if (npScope === 'group') npScenes = allScenes.filter(sc=>sc.groupNumber===studentData.groupNumber);
+    npScenes = npScenes.slice().sort((a,b)=>{
+      const oa=a.order, ob=b.order;
+      if (oa!=null && ob!=null) return oa-ob;
+      if (oa!=null) return -1;
+      if (ob!=null) return 1;
+      return (a.createdAt?.seconds||0)-(b.createdAt?.seconds||0);
+    });
     const [newspaper, letter, interview] = await Promise.all([
       fetchSharedContent('newspaper', rId, room, studentData),
       fetchSharedContent('letter', rId, room, studentData),
       fetchSharedContent('interview', rId, room, studentData),
     ]);
-    renderStudentView({ scenes, newspaper, letter, interview, room, studentData, rId, studentId });
+    dashNpPreview = { scenes: npScenes, newspaper, label: (room.name||'') + ' ' + studentId + '번' };
+    renderStudentView({ scenes, npScenes, newspaper, letter, interview, room, studentData, rId, studentId });
   } catch(e) {
     console.error(e);
     document.getElementById('sv-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--accent2)">불러오기 실패 — 다시 시도해주세요</div>';
@@ -1180,7 +1250,7 @@ async function openStudentView(rId, studentId){
 }
 function closeStudentView(){ document.getElementById('student-view-modal').style.display='none'; }
 
-function renderStudentView({ scenes, newspaper, letter, interview, room, studentData, rId, studentId }){
+function renderStudentView({ scenes, npScenes = [], newspaper, letter, interview, room, studentData, rId, studentId }){
   const scope = room.shareScope || 'room';
   let slideshowUrl = `slideshow.html?mode=teacher&teacher=${teacherUid}&room=${rId}`;
   let scopeNote = '';
@@ -1202,13 +1272,17 @@ function renderStudentView({ scenes, newspaper, letter, interview, room, student
       </div>
     </div>`).join('') : '<div style="color:var(--text2);font-size:.8rem">아직 모은 장면이 없어요</div>';
 
-  const npArticles = (newspaper?.articles||[]).map(a=>`
-    <div style="margin-bottom:10px;font-size:.82rem"><b>${a.title||''}</b><div style="color:var(--text2);white-space:pre-wrap;margin-top:2px">${a.caption||''}</div></div>
+  const npArticles = (newspaper?.articles||[]).map((a,i)=>`
+    <div style="display:flex;gap:10px;margin-bottom:10px;font-size:.82rem">
+      ${npScenes[i]?.imageUrl ? `<img src="${npScenes[i].imageUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#000">` : ''}
+      <div style="min-width:0;flex:1"><b>${a.title||''}</b><div style="color:var(--text2);white-space:pre-wrap;margin-top:2px">${a.caption||''}</div></div>
+    </div>
   `).join('');
   const npBlock = newspaper ? `
     <div class="dash-card-title" style="margin-top:18px">📰 음악신문</div>
     <div style="font-weight:700;margin-bottom:8px">${newspaper.headline||newspaper.title||''}</div>
     ${npArticles || '<div style="color:var(--text2);font-size:.8rem">작성된 기사가 없어요</div>'}
+    <button class="btn btn-primary" style="margin-top:6px;background:#C9A84C;color:#1a1a1a" onclick="openNewspaperPreview()">📰 신문 완성본으로 보기 · 인쇄</button>
   ` : `<div class="dash-card-title" style="margin-top:18px">📰 음악신문</div><div style="color:var(--text2);font-size:.8rem">아직 작성된 내용이 없어요</div>`;
 
   const letterBlock = (letter && letter.body) ? `
@@ -2200,6 +2274,12 @@ function goToSlideshow() {
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   if (id === 'newspaper-modal' && unsubNewspaper) { unsubNewspaper(); unsubNewspaper = null; }
+  if (id === 'newspaper-modal') {
+    npScenesOverride = null; npReadOnly = false;
+    const m = document.getElementById('newspaper-modal');
+    m.classList.remove('np-preview'); m.style.zIndex = '';
+    document.getElementById('np-toolbar-title').textContent = '📰 음악 감상 신문 편집';
+  }
   if (id === 'letter-modal' && unsubLetter) { unsubLetter(); unsubLetter = null; }
   if (id === 'interview-modal' && unsubInterview) { unsubInterview(); unsubInterview = null; }
 }
@@ -2243,6 +2323,7 @@ async function openNewspaper() {
   } else {
     document.getElementById('np-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
   }
+  document.getElementById('np-headline').placeholder = hintText('npHeadline');
   buildNpGrid();
   updateNpLayout();
   document.getElementById('newspaper-modal').classList.add('open');
@@ -2271,19 +2352,46 @@ function subscribeNewspaperShared(){
     updateNpLayout();
   }, err => console.warn('신문 공유 동기화 오류', err));
 }
+let npScenesOverride = null;   // 교사 대시보드 "완성본 보기"용 (학생 화면에선 null)
+let npReadOnly = false;         // true면 Firestore에 저장하지 않음(교사 미리보기)
 function buildNpGrid() {
   const grid = document.getElementById('np-grid');
+  const scenes = npScenesOverride || collectedScenes;
   const savedArticles = (pendingNewspaperData && pendingNewspaperData.articles) || [];
-  grid.innerHTML = collectedScenes.map((s, i) => `
+  const hint = hintText('npHint');
+  grid.innerHTML = scenes.map((s, i) => `
     <div class="np-article">
-      <input class="np-input np-article-title" value="${savedArticles[i]?.title ?? `장면 ${i+1} — ${s.title||''}`}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
-      <img src="${s.imageUrl}" alt="감상 이미지 ${i+1}">
-      <div class="field-hint">💡 이렇게 써보세요: 이 장면에서 어떤 음악 요소(리듬·선율·음색 등)가 들렸는지, 왜 이 그림을 골랐는지, 이 장면이 나타내는 감정은 무엇인지</div>
+      <input class="np-input np-article-title" value="${escHtml(savedArticles[i]?.title ?? `장면 ${i+1} — ${s.title||''}`)}" style="font-size:14px;font-weight:900;margin-bottom:4px;width:100%">
+      <img src="${s.imageUrl||''}" alt="감상 이미지 ${i+1}">
+      <div class="field-hint">${escHtml(hint)}</div>
       <div class="np-caption">
-        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="음악을 들으며 느낀 점을 자세히 적어보세요...">${savedArticles[i]?.caption ?? [s.description, s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / ')}</textarea>
+        <textarea style="width:100%;border:none;background:transparent;font-family:inherit;font-size:12px;resize:vertical;outline:none;color:#333;line-height:1.8;min-height:120px" rows="7" placeholder="${escHtml(hintText('npCaptionPlaceholder'))}">${escHtml(savedArticles[i]?.caption ?? [s.description, s.analysis, s.emotion, s.musicMood].filter(Boolean).join(' / '))}</textarea>
       </div>
     </div>
   `).join('');
+  requestAnimationFrame(()=>autoGrowAll('np-paper'));
+}
+// 교사 대시보드에서 학생 신문을 완성본 모양 그대로 보기 (저장 안 됨, 인쇄 가능)
+let dashNpPreview = null;
+function openNewspaperPreview(){
+  if (!dashNpPreview) return;
+  const { scenes, newspaper, label } = dashNpPreview;
+  if (!scenes || !scenes.length) { showToast('⚠️ 이 신문에 연결된 장면이 없어요'); return; }
+  npScenesOverride = scenes; npReadOnly = true;
+  pendingNewspaperData = newspaper || {};
+  const now = new Date();
+  document.getElementById('np-title').value = pendingNewspaperData.title || '음악 감상 신문';
+  document.getElementById('np-school').value = pendingNewspaperData.school || '';
+  document.getElementById('np-date').value = pendingNewspaperData.date || (now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일');
+  document.getElementById('np-grade').value = pendingNewspaperData.grade || '';
+  document.getElementById('np-headline').value = pendingNewspaperData.headline || '';
+  document.getElementById('np-headline').placeholder = '';
+  document.getElementById('np-layout').value = pendingNewspaperData.layout || 'col2';
+  const modal = document.getElementById('newspaper-modal');
+  modal.classList.add('np-preview'); modal.style.zIndex = '10001';
+  document.getElementById('np-toolbar-title').textContent = '📰 음악신문 완성본 보기' + (label ? ' — ' + label : '');
+  buildNpGrid(); updateNpLayout();
+  modal.classList.add('open');
 }
 function updateNpLayout() {
   document.getElementById('np-grid').className = 'np-grid ' + document.getElementById('np-layout').value;
@@ -2306,6 +2414,7 @@ function collectNewspaperData(){
   };
 }
 function scheduleNewspaperSave(){
+  if (npReadOnly) return; // 교사 미리보기 모드에선 저장 안 함
   clearTimeout(npSaveTimer);
   npSaveTimer = setTimeout(() => {
     pendingNewspaperData = collectNewspaperData();
@@ -2327,12 +2436,14 @@ function attachNewspaperAutosave(){
   document.getElementById('np-paper').addEventListener('input', scheduleNewspaperSave);
 }
 async function finalizeNewspaper(){
+  if (npReadOnly) { autoGrowAll('np-paper'); setTimeout(()=>window.print(), 120); return; } // 교사 미리보기: 기록 없이 인쇄만
   const data = collectNewspaperData();
   const captionsText = data.articles.map(a=>a.caption).filter(Boolean).join(' / ');
   const context = [`신문 헤드라인: ${data.headline||''}`, captionsText && `학생이 작성한 감상 내용: ${captionsText}`].filter(Boolean).join('\n');
   const note = await generateActivityNoteAI(context);
-  logToSheet('음악신문완성', data.title||'음악 감상 신문', collectedScenes.length+'개 장면', note);
-  window.print();
+  logToSheet('음악신문완성', data.title||'음악 감상 신문', (npScenesOverride||collectedScenes).length+'개 장면', note);
+  autoGrowAll('np-paper');
+  setTimeout(()=>window.print(), 120);
 }
 
 function populateLetterSceneSelect() {
@@ -2406,7 +2517,8 @@ async function finalizeLetter(){
   const context = [`음악: ${data.song||''}`, data.body && `편지 내용: ${data.body}`].filter(Boolean).join('\n');
   const note = await generateActivityNoteAI(context);
   logToSheet('음악편지완성', data.song||'', '', note);
-  window.print();
+  autoGrowAll('letter-paper');
+  setTimeout(()=>window.print(), 120);
 }
 async function openLetter() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
@@ -2433,7 +2545,9 @@ async function openLetter() {
     document.getElementById('letter-date').value = now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
     fillLetterFromScene(collectedScenes.length - 1);
   }
+  document.getElementById('letter-hint').textContent = hintText('letterHint');
   document.getElementById('letter-modal').classList.add('open');
+  requestAnimationFrame(()=>autoGrowAll('letter-paper'));
   document.getElementById('letter-paper').addEventListener('input', scheduleLetterSave);
   if (letterInterviewScope() !== 'individual') subscribeLetterShared();
   logToSheet('음악편지열기', collectedScenes[collectedScenes.length-1]?.title||'', '');
@@ -2525,7 +2639,8 @@ async function finalizeInterview(){
   const context = [`음악: ${data.song||''}`, qa && `인터뷰 응답: ${qa}`].filter(Boolean).join('\n');
   const note = await generateActivityNoteAI(context);
   logToSheet('음악인터뷰완성', data.song||'', '', note);
-  window.print();
+  autoGrowAll('interview-paper');
+  setTimeout(()=>window.print(), 120);
 }
 async function openInterview() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
@@ -2560,6 +2675,7 @@ async function openInterview() {
     buildQASection(defaultQuestions);
   }
   document.getElementById('interview-modal').classList.add('open');
+  requestAnimationFrame(()=>autoGrowAll('interview-paper'));
   document.getElementById('interview-paper').addEventListener('input', scheduleInterviewSave);
   if (letterInterviewScope() !== 'individual') subscribeInterviewShared();
   logToSheet('음악인터뷰열기', s.title||'', '');
@@ -2569,7 +2685,7 @@ function buildQASection(questions) {
   section.innerHTML = questions.map((q, i) => `
     <div class="qa-item">
       <div class="qa-q">Q${i+1}. ${q}</div>
-      <div class="field-hint">💡 구체적으로 써보세요: 어떤 부분(리듬·선율·가사·음색 등)이 그렇게 느껴졌는지, 예시를 들어서 답하면 더 좋아요</div>
+      <div class="field-hint">${escHtml(hintText('interviewHint'))}</div>
       <textarea class="qa-textarea" style="min-height:140px" placeholder="답변을 자세히 적어보세요..." rows="6"></textarea>
     </div>
   `).join('');
