@@ -112,6 +112,24 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .api-status.gemini{border-color:rgba(93,173,226,.4);color:#5DADE2}
 .api-status.pollinations{border-color:rgba(105,240,174,.3);color:#69f0ae}
 #blackout{position:fixed;inset:0;z-index:500;background:#000;opacity:0;pointer-events:none;transition:opacity .5s ease}
+#hover-tooltip{
+  position:fixed;z-index:9998;pointer-events:none;
+  background:rgba(255,255,255,.96);color:#1a1a1a;
+  border-radius:14px;padding:8px 14px;
+  font-size:12.5px;font-weight:600;line-height:1.5;max-width:280px;
+  box-shadow:0 6px 24px rgba(0,0,0,.45);
+  opacity:0;transform:translateY(4px) scale(.97);transition:opacity .15s ease,transform .15s ease;
+  word-break:keep-all;
+}
+#hover-tooltip::after{
+  content:'';position:absolute;bottom:-9px;left:var(--tip-arrow,20px);margin-left:-6px;
+  border:6px solid transparent;border-top-color:rgba(255,255,255,.96);border-bottom:none;
+}
+#hover-tooltip.below::after{
+  bottom:auto;top:-9px;
+  border-top-color:transparent;border-bottom:6px solid rgba(255,255,255,.96);
+}
+#hover-tooltip.show{opacity:1;transform:translateY(0) scale(1)}
 #ppt-progress{position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
 #ppt-progress.show{display:flex}
 .ppt-spinner{width:48px;height:48px;border:4px solid rgba(93,173,226,.25);border-top:4px solid #5DADE2;border-radius:50%;animation:spin 1s linear infinite}
@@ -284,6 +302,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
 <div id="signal-indicator">🚦 <span id="signal-text">음향 신호 발신 중</span></div>
 <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-text">녹화 중... 0:00</span></div>
 <div id="blackout"><div id="blackout-text"></div></div>
+<div id="hover-tooltip"></div>
 <div id="ppt-progress"><div class="ppt-spinner"></div><div id="ppt-progress-text">PPT 생성 준비 중...</div></div>
 
 <div id="music-upload-bar">
@@ -291,7 +310,7 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <label>🎵 배경 음악 (편곡본)</label>
   <input type="file" id="arrangement-file" accept="audio/*" onchange="loadArrangementFile(event)">
   <button id="music-play-btn" onclick="toggleArrangementPlay()" style="display:none">⏸</button>
-  <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.6" oninput="setMusicVolume(this.value)" style="display:none" title="음량">
+  <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.6" oninput="setMusicVolume(this.value)" style="display:none" data-tip="음악 소리 크기를 조절해요">
   <button class="mu-hide-btn" onclick="toggleMusicBar()">숨기기</button>
 </div>
 
@@ -354,16 +373,16 @@ select.bubble-ctrl-btn{padding:5px 8px}
 </div>
 
 <div id="bubble-panel">
-  <input id="bubble-name-input" placeholder="이름" maxlength="10">
-  <input id="bubble-text-input" placeholder="대사 입력..." maxlength="40">
-  <select class="bubble-ctrl-btn" id="bubble-tail">
+  <input id="bubble-name-input" data-tip="말풍선 위에 붙일 이름이에요 (안 써도 돼요)" placeholder="이름" maxlength="10">
+  <input id="bubble-text-input" data-tip="말풍선에 들어갈 대사를 써요" placeholder="대사 입력..." maxlength="40">
+  <select class="bubble-ctrl-btn" id="bubble-tail" data-tip="말풍선 꼬리가 향할 방향이에요">
     <option value="tail-left">꼬리 ↙</option>
     <option value="tail-right">꼬리 ↘</option>
     <option value="tail-top">꼬리 ↑</option>
   </select>
-  <button class="bubble-ctrl-btn" onclick="addBubble()">💬 추가</button>
-  <button class="bubble-ctrl-btn" onclick="clearBubbles()">🗑 전체삭제</button>
-  <button class="bubble-ctrl-btn" id="subtitle-toggle" onclick="toggleSubtitleEdit()">📝 자막</button>
+  <button class="bubble-ctrl-btn" onclick="addBubble()" data-tip="입력한 대사로 말풍선을 만들어요">💬 추가</button>
+  <button class="bubble-ctrl-btn" onclick="clearBubbles()" data-tip="이 장면의 말풍선을 모두 지워요">🗑 전체삭제</button>
+  <button class="bubble-ctrl-btn" id="subtitle-toggle" onclick="toggleSubtitleEdit()" data-tip="화면 아래 자막을 켜고 고쳐요">📝 자막</button>
   <button class="bubble-ctrl-btn" onclick="toggleBubblePanel()" style="color:rgba(255,255,255,.4)">✕</button>
 </div>
 
@@ -379,22 +398,22 @@ select.bubble-ctrl-btn{padding:5px 8px}
   <button class="fx-effect-btn" onclick="toggleEffect('light')">✨ 빛</button>
   <button class="fx-effect-btn" onclick="toggleEffect('snow')">❄️ 눈</button>
   <button class="fx-effect-btn" onclick="toggleEffect('star')">🌟 별</button>
-  <button class="fx-effect-btn" onclick="clearEffects()" style="border-color:#f44336;color:#f44336">🗑 효과 전체 끄기</button>
+  <button class="fx-effect-btn" onclick="clearEffects()" data-tip="켜둔 배경 효과를 모두 꺼요" style="border-color:#f44336;color:#f44336">🗑 효과 전체 끄기</button>
   <button class="fx-effect-btn" onclick="toggleFxPanel()" style="border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.6)">✕ 패널 닫기 (효과 유지)</button>
 </div>
 <div id="controls" style="display:none">
-  <button class="ctrl-btn" id="btn-exit" title="처음으로 나가기">✕</button>
-  <button class="ctrl-btn" id="btn-prev" title="이전 장면">◀</button>
+  <button class="ctrl-btn" id="btn-exit" data-tip="만들던 화면으로 돌아가요">✕</button>
+  <button class="ctrl-btn" id="btn-prev" data-tip="이전 장면으로 넘어가요">◀</button>
   <div class="dot-nav" id="dot-nav"></div>
-  <button class="ctrl-btn" id="btn-next" title="다음 장면">▶</button>
-  <button class="ctrl-btn" id="btn-auto" title="자동 재생">⏵</button>
-  <button class="ctrl-btn" id="btn-bubble" onclick="toggleBubblePanel()" title="말풍선(대사) 추가">💬</button>
-  <button class="ctrl-btn" id="btn-char" onclick="toggleCharPanel()" title="캐릭터 레이어 추가">🎭</button>
-  <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" title="화면 녹화로 영상 저장하기">⏺</button>
-  <button class="ctrl-btn" onclick="toggleFxPanel()" title="배경 효과(안개·비·눈 등)">🎆</button>
-  <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면으로 재생">⛶</button>
-  <button class="ctrl-btn" id="btn-save-deco" onclick="saveDecorations(true)" title="지금 배치한 캐릭터·말풍선·효과를 저장하기" style="color:#69f0ae">✅</button>
-  <button class="ctrl-btn" id="btn-ppt" onclick="downloadPPTX()" title="지금 화면(효과·캐릭터·말풍선 포함)을 PPT로 저장하기">📊</button>
+  <button class="ctrl-btn" id="btn-next" data-tip="다음 장면으로 넘어가요">▶</button>
+  <button class="ctrl-btn" id="btn-auto" data-tip="⏱ 설정대로 자동 진행해요 (음악에 맞춰 넘어갑니다)">⏵</button>
+  <button class="ctrl-btn" id="btn-bubble" onclick="toggleBubblePanel()" data-tip="그림 위에 대사 말풍선을 올려요">💬</button>
+  <button class="ctrl-btn" id="btn-char" onclick="toggleCharPanel()" data-tip="캐릭터 그림을 무대에 올려요">🎭</button>
+  <button class="ctrl-btn" id="btn-rec" onclick="toggleRecording()" data-tip="버튼 없이 깨끗한 영상으로 녹화해요">⏺</button>
+  <button class="ctrl-btn" onclick="toggleFxPanel()" data-tip="안개·비·눈 같은 배경 효과를 켜요">🎆</button>
+  <button class="ctrl-btn" id="btn-fullscreen" onclick="toggleFullscreen()" data-tip="전체화면으로 크게 봐요">⛶</button>
+  <button class="ctrl-btn" id="btn-save-deco" onclick="saveDecorations(true)" data-tip="지금 배치를 저장해요 (자동 저장도 되고 있어요)" style="color:#69f0ae">✅</button>
+  <button class="ctrl-btn" id="btn-ppt" onclick="downloadPPTX()" data-tip="지금 화면을 PPT 파일로 저장해요">📊</button>
 </div>
 <div id="key-hint">← → 키보드 | F 전체화면 | ESC 종료</div>
 <button id="back-btn" onclick="goBack()">↩ 처음으로</button>
@@ -1427,12 +1446,66 @@ async function restoreDecorations(){
 }
 
 
+
+// ══════════════════════════
+// data-tip 이 붙은 버튼 위에 설명을 띄움 (그 버튼 바로 위, 꼬리는 가운데)
+// ══════════════════════════
+function attachHoverTooltips(){
+  const tip = document.getElementById('hover-tooltip');
+  if(!tip) return;
+  let hoverEl = null;
+
+  function positionTip(el){
+    if(!el) return;
+    const b = el.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    const gap = 10, edge = 8;
+    const cx = b.left + b.width / 2;
+
+    let left = cx - t.width / 2;
+    left = Math.max(edge, Math.min(left, window.innerWidth - t.width - edge));
+
+    let top = b.top - t.height - gap;
+    const below = top < edge;
+    if(below) top = b.bottom + gap;
+    tip.classList.toggle('below', below);
+
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    tip.style.setProperty('--tip-arrow', Math.max(12, Math.min(cx - left, t.width - 12)) + 'px');
+  }
+
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('[data-tip]');
+    if(!el || el === hoverEl) return;
+    hoverEl = el;
+    tip.textContent = el.getAttribute('data-tip');
+    tip.classList.add('show');
+    positionTip(el);
+    requestAnimationFrame(() => { if(hoverEl === el) positionTip(el); });
+  });
+
+  document.addEventListener('mouseout', e => {
+    if(!hoverEl) return;
+    const related = e.relatedTarget;
+    if(related && hoverEl.contains(related)) return;
+    if(!e.target.closest('[data-tip]') || e.target.closest('[data-tip]') !== hoverEl){
+      tip.classList.remove('show');
+      hoverEl = null;
+    }
+  });
+
+  window.addEventListener('scroll', () => { if(hoverEl) positionTip(hoverEl); }, true);
+  window.addEventListener('resize', () => { if(hoverEl) positionTip(hoverEl); });
+}
+
 window.addEventListener('load', async ()=>{
   await resolveData();
   const makerKey = localStorage.getItem('mm_teacher_api') || localStorage.getItem('eaim_gemini_key') || '';
   if (makerKey) { GEMINI_KEY = makerKey; updateStatusBadge('gemini'); }
   else { updateStatusBadge('pollinations'); }
   initSlideshow();
+  attachHoverTooltips();
 });
 
 let activeEffects = new Set();
