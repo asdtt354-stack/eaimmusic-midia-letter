@@ -440,6 +440,19 @@ const firebaseConfig = {
   appId: "1:294479576192:web:c60e994e319dbd2f11ba65"
 };
 let remoteDb = null, remoteReady = false;
+/* 학급 정보 — 학생 화면이든 선생님 화면이든 여기 담아두고 말풍선 동기화에 씁니다 */
+const _P = new URLSearchParams(location.search);
+const ROOM_CTX = {
+  mode:    _P.get('mode') || '',
+  teacher: _P.get('teacher') || '',
+  room:    _P.get('room') || '',
+  student: _P.get('student') || '',
+  group:   _P.get('group') || '',
+};
+const isTeacherView = () => ROOM_CTX.mode === 'teacher';
+const roomLinked = () => !!(remoteReady && ROOM_CTX.teacher && ROOM_CTX.room);
+const decoCol = () => remoteDb.collection('teachers').doc(ROOM_CTX.teacher)
+                    .collection('rooms').doc(ROOM_CTX.room).collection('slideDeco');
 try { firebase.initializeApp(firebaseConfig); remoteDb = firebase.firestore(); remoteReady = true; } catch(e) { remoteReady = false; }
 
 async function fetchRemoteData(teacherUid, roomId, studentNum, groupNum) {
@@ -448,7 +461,7 @@ async function fetchRemoteData(teacherUid, roomId, studentNum, groupNum) {
   if (studentNum) query = col.where('studentNumber', '==', studentNum);
   else if (groupNum) query = col.where('groupNumber', '==', groupNum);
   const snap = await query.get();
-  const scenes = snap.docs.map(d => d.data());
+  const scenes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   scenes.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
   let roomName = '';
   try {
@@ -1299,17 +1312,65 @@ function collectSlideDecorations(container){
   });
   return { chars, bubbles };
 }
-function saveDecorations(showConfirm){
+/* 장면은 순서가 바뀔 수 있어서, 가능하면 장면 id로 짝지어 둡니다 */
+function decoKeyOf(i){ const sc = SCENES[i]; return (sc && sc.id) ? ('id:'+sc.id) : ('i:'+i); }
+function decoIndexOf(key){
+  if(key==='cover'||key==='end') return key;
+  if(String(key).startsWith('id:')){ const id=String(key).slice(3); const i=SCENES.findIndex(s=>s&&s.id===id); return i>=0?i:null; }
+  if(String(key).startsWith('i:')) return Number(String(key).slice(2));
+  return Number(key);                                   // 예전 방식(숫자)도 그대로 읽음
+}
+function buildDecoData(){
   const data = { effects: Array.from(activeEffects), scenes: {} };
   data.scenes['cover'] = collectSlideDecorations(getSlideKeyEl('cover'));
-  data.scenes['end'] = collectSlideDecorations(getSlideKeyEl('end'));
-  for (let i=0;i<TOTAL;i++) data.scenes[i] = collectSlideDecorations(getSlideKeyEl(i));
+  data.scenes['end']   = collectSlideDecorations(getSlideKeyEl('end'));
+  for (let i=0;i<TOTAL;i++) data.scenes[decoKeyOf(i)] = collectSlideDecorations(getSlideKeyEl(i));
+  return data;
+}
+function saveDecorations(showConfirm){
+  const data = buildDecoData();
   try{
     localStorage.setItem(DECORATION_STORAGE_KEY, JSON.stringify(data));
     if(showConfirm) showToast('✅ 캐릭터·말풍선·효과 저장 완료! 새로고침해도 유지돼요');
   }catch(e){
     if(showConfirm) showToast('❌ 저장 실패: '+e.message);
   }
+  pushDecoToRoom(data, showConfirm);
+}
+/* ── 학급 서버로 올리기 — 선생님 화면에서도 보이도록 ──
+   선생님 링크가 개인·모둠·반 중 무엇으로 열릴지 모르니 해당되는 곳에 모두 올려둡니다. */
+function decoDocKeys(){
+  const keys = [];
+  if (ROOM_CTX.student) keys.push('s_'+ROOM_CTX.student);
+  if (ROOM_CTX.group)   keys.push('g_'+ROOM_CTX.group);
+  keys.push('room');
+  return keys;
+}
+async function pushDecoToRoom(data, showConfirm){
+  if (!roomLinked() || isTeacherView()) return;          // 선생님 화면에서는 올리지 않음(보기 전용)
+  const payload = {
+    deco: JSON.stringify(data),
+    studentNumber: ROOM_CTX.student || null,
+    groupNumber: ROOM_CTX.group || null,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try {
+    await Promise.all(decoDocKeys().map(k => decoCol().doc(k).set(payload, { merge:true })));
+    if (showConfirm) showToast('✅ 저장 완료 — 선생님 화면에서도 보여요');
+  } catch(e) {
+    console.warn('말풍선 학급 공유 실패', e);
+    if (showConfirm) showToast('⚠️ 이 기기에는 저장했지만 학급 공유는 실패했어요');
+  }
+}
+async function pullDecoFromRoom(){
+  if (!roomLinked()) return null;
+  for (const k of decoDocKeys()) {
+    try {
+      const snap = await decoCol().doc(k).get();
+      if (snap.exists && snap.data().deco) return JSON.parse(snap.data().deco);
+    } catch(e) { console.warn('말풍선 불러오기 실패', e); return null; }
+  }
+  return null;
 }
 function restoreCharWrap(container, item){
   if(!item.src) return;
@@ -1340,16 +1401,22 @@ function restoreBubbleEl(container, item){
   makeDraggable(bubble);
   container.appendChild(bubble);
 }
-function restoreDecorations(){
-  let raw; try{ raw = localStorage.getItem(DECORATION_STORAGE_KEY); }catch(e){ return; }
-  if(!raw) return;
-  let data; try{ data = JSON.parse(raw); }catch(e){ return; }
+async function restoreDecorations(){
+  let data = null;
+  if (isTeacherView()) data = await pullDecoFromRoom();       // 선생님 화면은 학생이 올린 것을 본다
+  if (!data) {
+    let raw; try{ raw = localStorage.getItem(DECORATION_STORAGE_KEY); }catch(e){ return; }
+    if(!raw) { data = await pullDecoFromRoom(); }              // 이 기기에 없으면 학급 것이라도
+    else { try{ data = JSON.parse(raw); }catch(e){ return; } }
+  }
   if(!data || !data.scenes) return;
-  Object.keys(data.scenes).forEach(key=>{
+  Object.keys(data.scenes).forEach(rawKey=>{
+    const key = decoIndexOf(rawKey);
+    if(key===null||key===undefined||(typeof key==='number'&&isNaN(key))) return;
     const container = getSlideKeyEl(key);
     if(!container) return;
     const target = container.querySelector('.parallax-container') || container;
-    const d = data.scenes[key];
+    const d = data.scenes[rawKey];
     (d.chars||[]).forEach(item=>restoreCharWrap(target, item));
     (d.bubbles||[]).forEach(item=>restoreBubbleEl(container, item));
   });

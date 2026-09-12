@@ -2268,7 +2268,13 @@ async function clearScenes() {
 function goToSlideshow() {
   if (collectedScenes.length === 0) { showToast('⚠️ 먼저 장면을 하나 이상 추가해주세요'); return; }
   saveScenesToStorage();
- location.href = 'slideshow.html';
+  // 학급 정보를 함께 넘겨야 슬라이드쇼에서 만든 말풍선·캐릭터가 선생님 화면에도 보입니다
+  const q = [];
+  if (teacherUid) q.push('teacher=' + encodeURIComponent(teacherUid));
+  if (roomId)     q.push('room='    + encodeURIComponent(roomId));
+  if (STUDENT_NUMBER) q.push('student=' + encodeURIComponent(STUDENT_NUMBER));
+  if (typeof STUDENT_GROUP !== 'undefined' && STUDENT_GROUP) q.push('group=' + encodeURIComponent(STUDENT_GROUP));
+  location.href = 'slideshow.html' + (q.length ? '?' + q.join('&') : '');
 }
 
 function closeModal(id) {
