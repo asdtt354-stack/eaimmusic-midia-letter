@@ -561,34 +561,44 @@ function getPollinationsUrl(prompt, seed) {
 }
 async function loadBgImage(scene, idx) {
   const el = document.getElementById(`scene-slide-${idx}`); if (!el) return;
-  const spinner = document.getElementById(`bg-spinner-${idx}`);
+
   if (scene.imageUrl && (scene.imageUrl.startsWith('http') || scene.imageUrl.startsWith('data:'))) {
     const label = scene.imageUrl.startsWith('data:') ? '🎨 미디어픽쳐' : '📌 URL';
     if(spinner) spinner.style.display='none';
+    if (!scene.imageUrl.startsWith('data:')) bgSpinner(idx, true, '배경 불러오는 중...');
     setImgSrc(idx, scene.imageUrl, label); return;
   }
-  if (!scene.imagePrompt) { if(spinner) spinner.style.display='none'; return; }
+  if (!scene.imagePrompt) { bgSpinner(idx, false); return; }
   if (GEMINI_KEY) {
-    if(spinner) spinner.style.display='flex';
-    try { const d=await fetchGeminiImage(scene.imagePrompt); if(spinner)spinner.style.display='none'; setImgSrc(idx,d,'🔴 Gemini'); }
-    catch(e) { if(spinner)spinner.style.display='none'; setImgSrcWithFallback(idx, scene.imagePrompt); }
-  } else { if(spinner) spinner.style.display='none'; setImgSrcWithFallback(idx, scene.imagePrompt); }
+    bgSpinner(idx, true, 'AI 배경 생성 중...');
+    try { const d=await fetchGeminiImage(scene.imagePrompt); setImgSrc(idx,d,'🔴 Gemini'); }
+    catch(e) { setImgSrcWithFallback(idx, scene.imagePrompt); }
+  } else { setImgSrcWithFallback(idx, scene.imagePrompt); }
+}
+/* 배경 스피너는 "그림이 실제로 뜨는 순간" 끈다 */
+function bgSpinner(idx, on, text) {
+  const sp = document.getElementById(`bg-spinner-${idx}`); if(!sp) return;
+  sp.style.display = on ? 'flex' : 'none';
+  if (on && text) { const t = sp.lastElementChild; if (t) t.textContent = text; }
+  clearTimeout(sp._t);
+  if (on) sp._t = setTimeout(()=>{ sp.style.display='none'; }, 20000);
 }
 function setImgSrcWithFallback(idx, prompt) {
   const img=document.getElementById(`bgimg-${idx}`); if(!img) return;
   const url = getPollinationsUrl(prompt);
-  img.onload=()=>{ img.style.opacity='.45'; const b=document.getElementById(`src-badge-${idx}`); if(b){b.style.display='block';b.textContent='🟢 Pollinations';} };
+  bgSpinner(idx, true, 'AI 배경 생성 중...');
+  img.onload=()=>{ bgSpinner(idx,false); img.style.opacity='.45'; const b=document.getElementById(`src-badge-${idx}`); if(b){b.style.display='block';b.textContent='🟢 Pollinations';} };
   img.onerror=()=>{
     const url2 = getPollinationsUrl(prompt, Math.floor(Math.random()*99999));
-    img.onerror=()=>{ img.style.display='none'; };
+    img.onerror=()=>{ bgSpinner(idx,false); img.style.display='none'; };
     img.src=url2;
   };
   img.src=url;
 }
 function setImgSrc(idx,src,label) {
   const img=document.getElementById(`bgimg-${idx}`); if(!img) return;
-  img.onload=()=>{ img.style.opacity='.45'; const b=document.getElementById(`src-badge-${idx}`); if(b){b.style.display='block';b.textContent=label;} };
-  img.onerror=()=>{ if(label.includes('Gemini')) setImgSrcWithFallback(idx, src); else img.style.display='none'; };
+  img.onload=()=>{ bgSpinner(idx,false); img.style.opacity='.45'; const b=document.getElementById(`src-badge-${idx}`); if(b){b.style.display='block';b.textContent=label;} };
+  img.onerror=()=>{ if(label.includes('Gemini')) setImgSrcWithFallback(idx, src); else { bgSpinner(idx,false); img.style.display='none'; } };
   img.src=src;
 }
 
@@ -1122,10 +1132,17 @@ function updateAutoBtn() {
   const btn = document.getElementById('btn-auto'); if (!btn) return;
   btn.textContent = autoPlay ? '⏸' : '⏵';
   btn.style.color = autoPlay ? '#5DADE2' : 'rgba(255,255,255,.8)';
-  btn.title = autoPlay ? '일시정지 (자동재생 멈추기)' : '자동 재생 (7초마다 다음 장면)';
+  btn.title = autoPlay ? '일시정지 (자동 진행 멈추기)' : '자동 진행 (⏱ 설정대로 — 음악에 맞춰 넘어가요)';
 }
+/* ⏵ 는 ⏱ 설정(음악 재생목록 / 고정 시간)을 그대로 따른다.
+   예전에는 여기서 7초 고정으로 돌려서 음악과 따로 놀았다. */
 function toggleAuto() {
-  autoPlay=!autoPlay;
+  if (typeof window.pmToggleAutoRun === 'function') {
+    autoPlay = window.pmToggleAutoRun();
+    updateAutoBtn();
+    return;
+  }
+  autoPlay=!autoPlay;                       // 애드온이 없을 때의 예비 동작
   updateAutoBtn();
   clearInterval(autoTimer);
   if(autoPlay){ autoTimer=setInterval(()=>{ if(current>=TOTAL){autoPlay=false;clearInterval(autoTimer);updateAutoBtn();return;} showSlide(current+1); },7000); }
@@ -1136,6 +1153,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Escape'){ goBack(); }
 });
 function stopAutoIfPlaying() {
+  if (typeof window.pmStopAutoRun === 'function') window.pmStopAutoRun();
   if (!autoPlay) return;
   autoPlay = false;
   clearInterval(autoTimer);
@@ -1178,6 +1196,11 @@ function getCurrentSlideEl(){
   if(current===TOTAL+1)return document.getElementById('end-slide');
   return document.getElementById(`scene-slide-${current-1}`);
 }
+function escHtml(x){return String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* 말풍선 위치는 %로 — px로 두면 전체화면·녹화·다른 기기에서 자리가 틀어집니다 */
+function bubbleHTML(name,text){
+  return `${name?`<div class="bubble-name">${escHtml(name)}</div>`:''}<span>${escHtml(text)}</span><button class="bubble-del" onclick="this.parentElement.remove();autoSaveDeco();">✕</button>`;
+}
 function addBubble(){
   const text=document.getElementById('bubble-text-input').value.trim();
   if(!text){document.getElementById('bubble-text-input').focus();return;}
@@ -1187,11 +1210,15 @@ function addBubble(){
   const bubble=document.createElement('div');
   bubble.className=`speech-bubble ${tailType}`;
   bubble.style.left='30%';bubble.style.top='55%';
-  bubble.innerHTML=`${name?`<div class="bubble-name">${name}</div>`:''}<span>${text}</span><button class="bubble-del" onclick="this.parentElement.remove()">✕</button>`;
+  bubble.innerHTML=bubbleHTML(name,text);
   makeDraggable(bubble);slide.appendChild(bubble);
   document.getElementById('bubble-text-input').value='';
   document.getElementById('bubble-text-input').focus();
+  autoSaveDeco();
 }
+/* ✅ 를 누르지 않아도 저장되도록 — 학생이 잃어버리지 않게 */
+let _autoSaveT=null;
+function autoSaveDeco(){ clearTimeout(_autoSaveT); _autoSaveT=setTimeout(()=>{ try{ saveDecorations(false); }catch(e){} },600); }
 function makeDraggable(el){
   let sx,sy,sl,st;
   el.addEventListener('mousedown',e=>{
@@ -1199,12 +1226,16 @@ function makeDraggable(el){
     e.preventDefault();
     const r=el.getBoundingClientRect(),pr=el.parentElement.getBoundingClientRect();
     sx=e.clientX;sy=e.clientY;sl=r.left-pr.left;st=r.top-pr.top;
-    const mv=mv=>{el.style.left=(sl+mv.clientX-sx)+'px';el.style.top=(st+mv.clientY-sy)+'px';};
-    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    const pw=pr.width||1, ph=pr.height||1;
+    const mv=mv=>{
+      el.style.left=((sl+mv.clientX-sx)/pw*100).toFixed(2)+'%';
+      el.style.top =((st+mv.clientY-sy)/ph*100).toFixed(2)+'%';
+    };
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);autoSaveDeco();};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
   });
 }
-function clearBubbles(){const s=getCurrentSlideEl();if(s)s.querySelectorAll('.speech-bubble').forEach(b=>b.remove());}
+function clearBubbles(){const s=getCurrentSlideEl();if(s)s.querySelectorAll('.speech-bubble').forEach(b=>b.remove());autoSaveDeco();}
 let subtitleVisible=false;
 function toggleSubtitleEdit(){
   const bar=document.getElementById('subtitle-bar');
@@ -1305,7 +1336,7 @@ function restoreBubbleEl(container, item){
   const bubble=document.createElement('div');
   bubble.className=`speech-bubble ${item.tail||'tail-left'}`;
   bubble.style.left=item.left||'30%';bubble.style.top=item.top||'55%';
-  bubble.innerHTML=`${item.name?`<div class="bubble-name">${item.name}</div>`:''}<span>${item.text}</span><button class="bubble-del" onclick="this.parentElement.remove()">✕</button>`;
+  bubble.innerHTML=bubbleHTML(item.name,item.text);
   makeDraggable(bubble);
   container.appendChild(bubble);
 }

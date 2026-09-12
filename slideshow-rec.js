@@ -47,6 +47,17 @@
   #timing-panel .row { display: flex; gap: 6px; }
   #timing-panel button { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid rgba(93,173,226,.4); background: rgba(93,173,226,.18); color: #5DADE2; cursor: pointer; font-family: inherit; font-size: 12px; }
   #timing-panel button.quiet { border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: rgba(255,255,255,.6); }
+  #timing-panel .tm-music { border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:8px 10px; margin-bottom:10px; }
+  #timing-panel .tm-mhead { font-size:11px; color:rgba(255,255,255,.55); margin-bottom:6px; }
+  #timing-panel .tm-track { padding:5px 0; border-top:1px solid rgba(255,255,255,.07); }
+  #timing-panel .tm-track:first-of-type { border-top:none; }
+  #timing-panel .tm-tname { font-size:11px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #timing-panel .tm-trow { display:flex; align-items:center; gap:5px; margin-top:3px; font-size:11px; color:rgba(255,255,255,.5); flex-wrap:wrap; }
+  #timing-panel .tm-trow input.tm-dur { width:52px; text-align:center; }
+  #timing-panel .tm-trow input.tm-scn { width:44px; text-align:center; }
+  #timing-panel .tm-trow input { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:6px; padding:2px 4px; font-family:inherit; font-size:11px; }
+  #timing-panel .tm-auto { font-size:10px; color:rgba(255,255,255,.35); }
+  #timing-panel .tm-range { font-size:10px; color:#5DADE2; }
   body.rec-clean #timing-panel { display: none !important; }
   `;
   document.head.appendChild(css);
@@ -61,48 +72,162 @@
 
 
   // ══════════════════════════════════════════════════════════
-  // ⏱ 자동 진행 타이밍 — 음악 길이에 장면을 맞추기
-  //   music : 편곡본 1곡을 장면 수로 균등 분배 (2분 ÷ 4장면 = 30초씩)
-  //   scene : 장면마다 붙은 노래(audioUrl)가 끝나면 다음 장면
-  //   fixed : N초마다
+  // ⏱ 자동 진행 — 음악 재생목록에 장면을 맞추기
+  //   음악을 여러 곡 올릴 수 있고, 곡마다 담당할 장면 수를 정합니다.
+  //   (예: 그림 4장 + 음악 2곡 → 1곡당 2장면)
+  //   곡 길이는 자동으로 읽되, 못 읽거나 다르게 쓰고 싶으면 직접 입력합니다.
   // ══════════════════════════════════════════════════════════
   const TIMING_KEY = 'eaim_slide_timing';
+  const PLAN_KEY   = 'eaim_slide_music_plan';          // 곡 이름별 길이·장면 수 기억
   let timing = { mode: 'music', fixedSec: 7 };
   try { timing = { ...timing, ...JSON.parse(localStorage.getItem(TIMING_KEY) || '{}') }; } catch {}
   function saveTiming() { localStorage.setItem(TIMING_KEY, JSON.stringify(timing)); }
+
+  let savedPlan = {};
+  try { savedPlan = JSON.parse(localStorage.getItem(PLAN_KEY) || '{}'); } catch {}
+  function savePlan() {
+    const out = {};
+    TRACKS.forEach(t => { out[t.name] = { sec: t.sec, scenes: t.scenes }; });
+    try { localStorage.setItem(PLAN_KEY, JSON.stringify(out)); } catch {}
+  }
 
   const sceneCount = () => (typeof TOTAL !== 'undefined' ? TOTAL : ((typeof SCENES !== 'undefined' && SCENES.length) || 0));
   const arrangement = () => ((typeof arrangementAudioEl !== 'undefined') ? arrangementAudioEl : null);
   const goto = (i) => { if (typeof showSlide === 'function') showSlide(i); };
 
-  let syncRunning = false, syncHandler = null, fixedTimer = null, syncAudio = null;
+  // "2:35" 또는 "155" → 초
+  function parseTime(s) {
+    s = String(s || '').trim(); if (!s) return 0;
+    if (s.includes(':')) { const [m, x] = s.split(':'); return (Number(m) || 0) * 60 + (Number(x) || 0); }
+    return Number(s) || 0;
+  }
+  const fmtTime = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+
+  // ── 곡 길이 읽기 (blob·스트리밍은 Infinity 로 오는 일이 잦아 한 번 우회함) ──
+  function readDuration(audio, cb) {
+    let done = false;
+    const ok = (d) => { if (!done) { done = true; cb(d); } };
+    const now = () => { const d = audio.duration; if (isFinite(d) && d > 0) { ok(d); return true; } return false; };
+    if (now()) return;
+    const onMeta = () => {
+      if (now()) return;
+      const onDur = () => { const d = audio.duration; if (isFinite(d) && d > 0) { audio.removeEventListener('durationchange', onDur); try { audio.currentTime = 0; } catch {} ok(d); } };
+      audio.addEventListener('durationchange', onDur);
+      try { audio.currentTime = 1e6; } catch {}
+    };
+    audio.addEventListener('loadedmetadata', onMeta, { once: true });
+    setTimeout(() => ok(0), 5000);
+  }
+
+  // ══ 음악 재생목록 ══
+  // TRACKS: [{ name, el, sec, manual, scenes }]
+  const TRACKS = [];
+  window.pmTracks = TRACKS;
+
+  function balanceScenes() {                     // 장면을 곡 수만큼 고르게 나눔
+    const N = sceneCount(), T = TRACKS.length; if (!T) return;
+    const base = Math.floor(N / T), extra = N % T;
+    TRACKS.forEach((t, i) => { t.scenes = base + (i < extra ? 1 : 0); });
+  }
+  function totalAssigned() { return TRACKS.reduce((s, t) => s + (t.scenes || 0), 0); }
+
+  function addTrack(file) {
+    const el = document.createElement('audio');
+    el.src = URL.createObjectURL(file);
+    el.preload = 'metadata';
+    const volEl = $('music-volume');
+    el.volume = volEl ? parseFloat(volEl.value || 0.6) : 0.6;
+    document.body.appendChild(el);
+    const remembered = savedPlan[file.name] || {};
+    const t = { name: file.name, el, sec: remembered.sec || 0, manual: !!remembered.sec, scenes: remembered.scenes || 0 };
+    TRACKS.push(t);
+    if (!t.manual) readDuration(el, (D) => { if (D && !t.manual) { t.sec = D; savePlan(); if (tp.classList.contains('show')) renderTimingPanel(); } });
+    if (!TRACKS.some(x => x.scenes > 0)) balanceScenes();
+    else if (!t.scenes) { balanceScenes(); }
+    // 기존 코드(볼륨·재생 버튼·녹화)가 바라보는 대상은 첫 곡으로 유지
+    if (typeof window.arrangementAudioEl !== 'undefined' || true) window.arrangementAudioEl = TRACKS[0].el;
+    savePlan();
+    return t;
+  }
+  function clearTracks() {
+    TRACKS.forEach(t => { try { t.el.pause(); t.el.remove(); } catch {} });
+    TRACKS.length = 0; window.arrangementAudioEl = null;
+  }
+  function stopAllTracks() { TRACKS.forEach(t => { try { t.el.pause(); t.el.currentTime = 0; } catch {} }); }
+
+  // 음악 업로드 가로채기 — 여러 곡을 받는다
+  (function hookUpload() {
+    const inp = $('arrangement-file');
+    if (inp) inp.setAttribute('multiple', 'multiple');
+    window.loadArrangementFile = function (e) {
+      const files = [...(e.target.files || [])]; if (!files.length) return;
+      files.forEach(addTrack);
+      const dot = $('music-upload-dot'); if (dot) dot.classList.add('active');
+      const pb = $('music-play-btn'); if (pb) pb.style.display = 'inline-block';
+      const vl = $('music-volume'); if (vl) vl.style.display = 'inline-block';
+      if (typeof updateMusicPlayBtn === 'function') updateMusicPlayBtn();
+      toast(`🎵 음악 ${TRACKS.length}곡 준비됐어요 — ⏱ 에서 곡마다 장면 수를 정하세요`);
+      if (tp.classList.contains('show')) renderTimingPanel();
+    };
+    // 볼륨은 모든 곡에 적용
+    window.setMusicVolume = function (v) { TRACKS.forEach(t => t.el.volume = parseFloat(v)); };
+    window.toggleArrangementPlay = function () {
+      const t = TRACKS[0]; if (!t) return;
+      if (t.el.paused) t.el.play().catch(() => {}); else stopAllTracks();
+      if (typeof updateMusicPlayBtn === 'function') updateMusicPlayBtn();
+    };
+  })();
+
+  let syncRunning = false, syncHandler = null, fixedTimer = null, syncAudio = null, trackTimer = null;
 
   function stopSync() {
     syncRunning = false;
-    if (syncAudio && syncHandler) { syncAudio.removeEventListener('timeupdate', syncHandler); syncAudio.removeEventListener('ended', syncEnded); }
+    if (syncAudio && syncHandler) syncAudio.removeEventListener('timeupdate', syncHandler);
     syncHandler = null; syncAudio = null;
     clearInterval(fixedTimer); fixedTimer = null;
+    clearTimeout(trackTimer); trackTimer = null;
   }
-  function syncEnded() { if (syncRunning) { stopSync(); goto(sceneCount() + 1); } } // 곡 끝 → 커튼콜
 
-  // 편곡본 1곡 ↔ 장면 균등 분배
-  function startMusicSync(audio) {
-    const N = sceneCount(); if (!N || !audio) return false;
-    const run = () => {
-      const D = audio.duration; if (!isFinite(D) || D <= 0) return;
-      const per = D / N;
-      syncAudio = audio; syncRunning = true;
+  // ── 재생목록대로 진행: 곡1 → 담당 장면들 → 곡2 → … → 마지막 곡 끝 → 엔딩 ──
+  function startPlaylist() {
+    const N = sceneCount(); if (!N || !TRACKS.length) return false;
+    if (totalAssigned() !== N) balanceScenes();
+
+    const plan = []; let at = 0;
+    TRACKS.forEach(t => { if (t.scenes > 0) { plan.push({ t, from: at + 1, n: t.scenes }); at += t.scenes; } });
+    if (!plan.length) return false;
+
+    syncRunning = true;
+    stopAllTracks();
+
+    const playAt = (pi) => {
+      if (!syncRunning) return;
+      const p = plan[pi];
+      if (!p) { stopSync(); goto(sceneCount() + 1); return; }          // 마지막 곡 끝 → 엔딩
+      const el = p.t.el;
+      const D = p.t.sec > 0 ? p.t.sec : 0;
+      const per = D > 0 ? D / p.n : Math.max(2, timing.fixedSec);
+      let stepped = false;
+      const advance = () => { if (stepped) return; stepped = true; el.pause(); playAt(pi + 1); };
+
+      goto(p.from);
+      syncAudio = el;
       syncHandler = () => {
         if (!syncRunning) return;
-        const target = Math.min(N, Math.floor(audio.currentTime / per) + 1);
+        const target = p.from + Math.min(p.n - 1, Math.floor(el.currentTime / per));
         if (typeof current !== 'undefined' && current !== target && !(typeof isTransitioning !== 'undefined' && isTransitioning)) goto(target);
       };
-      audio.addEventListener('timeupdate', syncHandler);
-      audio.addEventListener('ended', syncEnded, { once: true });
-      audio.loop = false; audio.currentTime = 0; audio.play().catch(() => {});
-      toast(`⏱ ${Math.round(D)}초 ÷ ${N}장면 = 장면당 ${per.toFixed(1)}초로 진행해요`);
+      el.addEventListener('timeupdate', syncHandler);
+      el.addEventListener('ended', advance, { once: true });
+      el.loop = false; el.currentTime = 0; el.play().catch(() => {});
+      // 길이를 직접 입력했거나 ended 가 안 올 때를 대비한 안전망
+      clearTimeout(trackTimer);
+      trackTimer = setTimeout(advance, (D > 0 ? D : per * p.n) * 1000 + 250);
     };
-    if (isFinite(audio.duration) && audio.duration > 0) run(); else audio.addEventListener('loadedmetadata', run, { once: true });
+
+    playAt(0);
+    const totalSec = TRACKS.reduce((s, t) => s + (t.scenes > 0 ? t.sec : 0), 0);
+    toast(`⏱ ${plan.length}곡 · 전체 ${fmtTime(totalSec)} 로 ${N}장면을 진행해요`);
     return true;
   }
 
@@ -125,40 +250,83 @@
   // 현재 설정으로 자동 진행 시작 (1장면부터)
   function startAutoRun() {
     stopSync();
-    goto(1);
-    const a = arrangement();
     if (timing.mode === 'music') {
-      if (a && a.src) return startMusicSync(a);
-      toast('⚠️ 편곡본이 없어 장면별 노래/고정 시간으로 진행해요');
-      const anyScene = (typeof SCENES !== 'undefined') && SCENES.some(s => s.audioUrl);
-      return anyScene ? startSceneSync() : startFixedSync(timing.fixedSec);
+      if (TRACKS.length) return startPlaylist();
+      toast('⚠️ 음악이 없어 고정 시간으로 진행해요 — 🎵 에서 음악을 올려주세요');
+      goto(1); return startFixedSync(timing.fixedSec);
     }
+    goto(1);
     if (timing.mode === 'scene') return startSceneSync();
     return startFixedSync(timing.fixedSec);
   }
+  function stopAutoRun() { stopSync(); stopAllTracks(); if (typeof updateMusicPlayBtn === 'function') updateMusicPlayBtn(); }
+  const autoRunning = () => syncRunning;
+  window.pmStartAutoRun = startAutoRun;
+  window.pmStopAutoRun = stopAutoRun;
+  window.pmToggleAutoRun = function () { if (syncRunning) { stopAutoRun(); toast('■ 자동 진행 멈춤'); } else startAutoRun(); return syncRunning; };
+  window.pmAutoRunning = autoRunning;
 
   // ── 설정 패널 ──
   const tp = document.createElement('div');
   tp.id = 'timing-panel';
   document.body.appendChild(tp);
   function renderTimingPanel() {
-    const a = arrangement(); const N = sceneCount();
-    const D = a && isFinite(a.duration) ? a.duration : 0;
-    const hasSceneSongs = (typeof SCENES !== 'undefined') && SCENES.some(s => s.audioUrl);
+    const N = sceneCount();
+    const assigned = totalAssigned();
+    const rows = TRACKS.map((t, i) => {
+      let from = 1; for (let k = 0; k < i; k++) from += TRACKS[k].scenes || 0;
+      const to = from + (t.scenes || 0) - 1;
+      const range = t.scenes > 0 ? (t.scenes === 1 ? `${from}장면` : `${from}~${to}장면`) : '담당 없음';
+      return `<div class="tm-track">
+        <div class="tm-tname" title="${t.name}">${i + 1}. ${t.name}</div>
+        <div class="tm-trow">
+          길이 <input type="text" class="tm-dur" data-i="${i}" value="${t.sec ? fmtTime(t.sec) : ''}" placeholder="2:30">
+          <span class="tm-auto">${t.manual ? '직접 입력' : (t.sec ? '자동' : '읽는 중…')}</span>
+          장면 <input type="number" class="tm-scn" data-i="${i}" min="0" max="${N}" value="${t.scenes || 0}">
+          <span class="tm-range">${range}</span>
+        </div>
+      </div>`;
+    }).join('');
+
     tp.innerHTML = `
       <h4>⏱ 장면 자동 진행</h4>
+      <div class="tm-music">
+        <div class="tm-mhead">🎵 음악 ${TRACKS.length}곡 · 그림 ${N}장면
+          ${TRACKS.length && assigned !== N ? `<b style="color:#ffb74d"> — 담당 합계 ${assigned} (${N} 이어야 해요)</b>` : ''}</div>
+        ${TRACKS.length ? rows : '<div class="info" style="margin:0">위쪽 🎵 칸에서 음악 파일을 고르세요. 여러 곡을 한 번에 골라도 돼요.</div>'}
+        <div class="row" style="margin-top:6px">
+          <button class="quiet" id="tm-balance">장면 고르게 나누기</button>
+          <button class="quiet" id="tm-clearmusic">음악 비우기</button>
+        </div>
+      </div>
       <label><input type="radio" name="tm" value="music" ${timing.mode === 'music' ? 'checked' : ''}>
-        <span><b>편곡 음악에 맞추기</b><br><span class="info" style="margin:0">${D ? `${Math.round(D)}초 ÷ ${N}장면 = 장면당 ${(D / N).toFixed(1)}초` : '배경 음악(편곡본)을 올리면 길이를 읽어와요'}</span></span></label>
-      <label><input type="radio" name="tm" value="scene" ${timing.mode === 'scene' ? 'checked' : ''}>
-        <span><b>장면별 노래에 맞추기</b><br><span class="info" style="margin:0">${hasSceneSongs ? '각 장면의 노래가 끝나면 다음 장면으로' : '장면에 붙은 노래가 아직 없어요'}</span></span></label>
+        <span><b>음악에 맞추기</b><br><span class="info" style="margin:0">곡마다 담당 장면에 시간을 나눠 담아요</span></span></label>
       <label><input type="radio" name="tm" value="fixed" ${timing.mode === 'fixed' ? 'checked' : ''}>
         <span><b>고정 시간</b> &nbsp;<input type="number" id="tm-sec" min="2" max="120" value="${timing.fixedSec}"> 초마다</span></label>
       <div class="info">녹화를 시작하면 이 설정대로 1장면부터 자동으로 넘어가요. 녹화 중에도 ← → 로 직접 넘길 수 있어요.</div>
       <div class="row"><button id="tm-preview">▶ 미리보기</button><button class="quiet" id="tm-stop">■ 멈춤</button><button class="quiet" id="tm-close">닫기</button></div>`;
+
     tp.querySelectorAll('input[name=tm]').forEach(r => r.onchange = () => { timing.mode = r.value; saveTiming(); });
     tp.querySelector('#tm-sec').oninput = (e) => { timing.fixedSec = Number(e.target.value) || 7; saveTiming(); };
+    tp.querySelectorAll('.tm-dur').forEach(inp => {
+      inp.onchange = (e) => {
+        const t = TRACKS[Number(e.target.dataset.i)]; if (!t) return;
+        const v = parseTime(e.target.value);
+        if (v > 0) { t.sec = v; t.manual = true; } else { t.manual = false; }
+        savePlan(); renderTimingPanel();
+      };
+    });
+    tp.querySelectorAll('.tm-scn').forEach(inp => {
+      inp.onchange = (e) => {
+        const t = TRACKS[Number(e.target.dataset.i)]; if (!t) return;
+        t.scenes = Math.max(0, Math.min(sceneCount(), Number(e.target.value) || 0));
+        savePlan(); renderTimingPanel();
+      };
+    });
+    tp.querySelector('#tm-balance').onclick = () => { balanceScenes(); savePlan(); renderTimingPanel(); };
+    tp.querySelector('#tm-clearmusic').onclick = () => { stopSync(); clearTracks(); renderTimingPanel(); toast('음악을 비웠어요'); };
     tp.querySelector('#tm-preview').onclick = () => { startAutoRun(); };
-    tp.querySelector('#tm-stop').onclick = () => { stopSync(); const a2 = arrangement(); if (a2) { a2.pause(); a2.loop = true; } toast('■ 자동 진행 멈춤'); };
+    tp.querySelector('#tm-stop').onclick = () => { stopAutoRun(); toast('■ 자동 진행 멈춤'); };
     tp.querySelector('#tm-close').onclick = () => tp.classList.remove('show');
   }
   function toggleTimingPanel() { if (tp.classList.contains('show')) tp.classList.remove('show'); else { renderTimingPanel(); tp.classList.add('show'); } }
@@ -196,16 +364,19 @@
   function buildStream(ds) {
     const v = ds.getVideoTracks();
     let a = ds.getAudioTracks();
-    const el = (typeof arrangementAudioEl !== 'undefined') ? arrangementAudioEl : null; // 미디어레터 편곡본
-    if (!a.length && el) {
+    const els = TRACKS.length ? TRACKS.map(t => t.el)
+              : (((typeof arrangementAudioEl !== 'undefined') && arrangementAudioEl) ? [arrangementAudioEl] : []);
+    if (!a.length && els.length) {        // 탭 소리를 못 잡았을 때만 직접 섞는다
       mixCtx = mixCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (mixCtx.state === 'suspended') mixCtx.resume();
-      if (!el._pmSource) {              // 같은 <audio>에 소스는 한 번만 만들 수 있음
-        el._pmSource = mixCtx.createMediaElementSource(el);
-        el._pmSource.connect(mixCtx.destination);
-      }
       const dest = mixCtx.createMediaStreamDestination();
-      el._pmSource.connect(dest);
+      els.forEach(el => {
+        if (!el._pmSource) {            // 같은 <audio>에 소스는 한 번만 만들 수 있음
+          el._pmSource = mixCtx.createMediaElementSource(el);
+          el._pmSource.connect(mixCtx.destination);
+        }
+        el._pmSource.connect(dest);
+      });
       a = dest.stream.getAudioTracks();
     }
     return new MediaStream([...v, ...a]);
@@ -237,8 +408,7 @@
 
     // 설정한 타이밍대로 1장면부터 자동 진행 (편곡본이 있으면 곡 길이에 맞춰 균등 분배)
     tp.classList.remove('show');
-    const el = arrangement();
-    if (el) { el.pause(); if (typeof updateMusicPlayBtn === 'function') updateMusicPlayBtn(); }
+    stopAllTracks(); if (typeof updateMusicPlayBtn === 'function') updateMusicPlayBtn();
 
     const stream = buildStream(displayStream);
     chunks = []; seconds = 0;
@@ -265,7 +435,7 @@
 
   function stopClean(msg) {
     if (!isRecording()) return;
-    stopSync();
+    stopSync(); stopAllTracks();
     recorder.stop();
     clearInterval(timer); document.title = document.title.replace(/^● .*녹화 중$/, 'EAIM 슬라이드쇼');
     document.body.classList.remove('rec-clean');
@@ -286,7 +456,9 @@
     const orig = window.startCreditsScroll;
     window.startCreditsScroll = function () {
       const r = orig.apply(this, arguments);
-      const dur = Math.max(12, ((typeof DATA !== 'undefined' && DATA && DATA.credits) || []).length * 2.2 + 10);
+      const dur = (typeof window._pmCreditsDur === 'number' && window._pmCreditsDur > 0)
+        ? window._pmCreditsDur
+        : Math.max(12, ((typeof DATA !== 'undefined' && DATA && DATA.credits) || []).length * 2.2 + 10);
       setTimeout(() => { if (isRecording()) stopClean('🎭 막이 내려 녹화를 마쳤어요'); }, dur * 1000 + 1500);
       return r;
     };
