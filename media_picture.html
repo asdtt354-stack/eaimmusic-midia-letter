@@ -961,6 +961,23 @@ async function deleteRoomUI(rId){
     if(expandedRoomId===rId) expandedRoomId=null;
   }catch(e){ showToast('❌ 삭제 실패: '+e.message); }
 }
+// 🗑️ 잘못 들어온 학생 기록 하나만 삭제 (그 학생이 만든 장면도 함께)
+async function deleteStudentUI(rId, encodedId){
+  const studentId = decodeURIComponent(encodedId);
+  try{
+    const scenesSnap = await scenesColRef(teacherUid, rId).where('studentNumber','==',studentId).get();
+    const n = scenesSnap.size;
+    const msg = `「${studentId}번」 기록을 삭제할까요?\n\n` +
+      (n ? `이 학생이 만든 장면 ${n}개도 함께 삭제돼요.\n` : '') +
+      `삭제하면 되돌릴 수 없어요.`;
+    if(!confirm(msg)) return;
+    const batch = db.batch();
+    scenesSnap.docs.forEach(d=>batch.delete(d.ref));
+    batch.delete(studentsColRef(teacherUid, rId).doc(studentId));
+    await batch.commit();
+    showToast(`🗑️ ${studentId}번 기록을 삭제했어요`);
+  }catch(e){ showToast('❌ 삭제 실패: '+e.message); }
+}
 function toggleRoomClass(rId, current){
   roomDocRef(teacherUid, rId).set({classOn: !current},{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
@@ -1162,8 +1179,11 @@ function renderDashContent(){
                   <strong>${s.id}번</strong>
                   <span class="s-meta">${s.draft?.sceneTitle? '장르: '+s.draft.sceneTitle : '작업 중'} · ${s.updatedAt? new Date(s.updatedAt.seconds*1000).toLocaleString('ko-KR') : ''}</span>
                 </div>
-                <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;flex-shrink:0" onclick="openStudentView('${r.id}','${s.id}')">👁 보기</button>
-                <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;flex-shrink:0" onclick="openStudentReport('${r.id}','${s.id}')">📋 세특</button>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="openStudentView('${r.id}','${s.id}')">👁 보기</button>
+                  <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="openStudentReport('${r.id}','${s.id}')">📋 세특</button>
+                  <button class="btn btn-secondary" title="잘못 들어온 기록 삭제" style="padding:5px 10px;font-size:11px;background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteStudentUI('${r.id}','${encodeURIComponent(s.id).replace(/'/g,'%27')}')">🗑️</button>
+                </div>
               </div>`).join('')}
         </div>` : ''}
       </div>`;
