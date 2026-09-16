@@ -596,8 +596,9 @@ async function loadBgImage(scene, idx) {
 
   if (scene.imageUrl && (scene.imageUrl.startsWith('http') || scene.imageUrl.startsWith('data:'))) {
     const label = scene.imageUrl.startsWith('data:') ? '🎨 미디어픽쳐' : '📌 URL';
-    if(spinner) spinner.style.display='none';
-    if (!scene.imageUrl.startsWith('data:')) bgSpinner(idx, true, '배경 불러오는 중...');
+    // 미디어픽쳐 그림(data:)은 이미 완성된 그림이라 스피너를 바로 끄고, 외부 URL만 '불러오는 중' 표시
+    if (scene.imageUrl.startsWith('data:')) bgSpinner(idx, false);
+    else bgSpinner(idx, true, '배경 불러오는 중...');
     setImgSrc(idx, scene.imageUrl, label); return;
   }
   if (!scene.imagePrompt) { bgSpinner(idx, false); return; }
@@ -1304,7 +1305,7 @@ function initSlideshow() {
   document.getElementById('controls').style.display='flex';
   restoreDecorations();
   showSlide(0);
-  (async()=>{ for(let i=0;i<SCENES.length;i++) await loadBgImage(SCENES[i],i).catch(()=>{}); })();
+  (async()=>{ for(let i=0;i<SCENES.length;i++) await loadBgImage(SCENES[i],i).catch(e=>{ console.warn('배경 로딩 오류', i, e); bgSpinner(i,false); }); })();
 }
 
 // ══════════════════════════
