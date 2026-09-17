@@ -17,7 +17,7 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .slide.visible{opacity:1}
 .parallax-container{position:absolute;inset:0;overflow:hidden}
 .bg-layer{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;transition:opacity 1.4s ease, transform .1s ease-out;will-change:transform}
-.char-wrap{position:absolute;bottom:0;left:55%;height:85%;max-width:38%;z-index:5;cursor:move}
+.char-wrap{position:absolute;bottom:0;left:55%;height:85%;max-width:38%;z-index:5;cursor:move;touch-action:none}
 .char-wrap.selected{outline:3px dashed #5DADE2;outline-offset:8px;border-radius:8px}
 .char-layer{height:100%;width:auto;max-width:100%;object-fit:contain;transition:opacity 1s ease, transform .08s ease-out;will-change:transform;filter:drop-shadow(0 8px 32px rgba(0,0,0,.7));display:block;pointer-events:none}
 .char-del-btn{position:absolute;top:-10px;right:-10px;width:22px;height:22px;border-radius:50%;background:#ff5252;color:#fff;font-size:12px;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:6;line-height:1;pointer-events:auto}
@@ -143,7 +143,7 @@ body{font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;background:#0D1B2A;
 .number-lyrics-line .current-line{color:#FFD700;text-shadow:0 0 20px rgba(255,215,0,.4),0 2px 8px rgba(0,0,0,.8)}
 .number-lyrics-line .next-line{font-size:.75em;color:rgba(255,255,255,.45);margin-top:4px}
 .lyrics-toggle-btn{position:absolute;bottom:52px;right:16px;z-index:26;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit}
-.speech-bubble{position:absolute;background:rgba(255,255,255,.95);color:#1a1a1a;border-radius:18px;padding:10px 16px;font-size:clamp(12px,1.8vw,16px);font-weight:600;line-height:1.5;max-width:220px;word-break:keep-all;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:30;cursor:move;user-select:none;animation:bubblePop .3s ease;border:2px solid rgba(0,0,0,.06)}
+.speech-bubble{position:absolute;background:rgba(255,255,255,.95);color:#1a1a1a;border-radius:18px;padding:10px 16px;font-size:clamp(12px,1.8vw,16px);font-weight:600;line-height:1.5;max-width:220px;word-break:keep-all;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:30;cursor:move;user-select:none;touch-action:none;animation:bubblePop .3s ease;border:2px solid rgba(0,0,0,.06)}
 .speech-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;border:7px solid transparent;border-top-color:rgba(255,255,255,.95);border-bottom:none}
 .speech-bubble.tail-right::after{left:auto;right:24px}
 .speech-bubble.tail-top::after{bottom:auto;top:-12px;border-top:none;border-bottom:7px solid rgba(255,255,255,.95)}
@@ -668,7 +668,7 @@ document.getElementById('stage').addEventListener('click', (e) => {
 });
 function makeCharDraggable(el) {
   let sx, sy, sl, st, moved;
-  el.addEventListener('mousedown', e => {
+  el.addEventListener('pointerdown', e => {
     if (e.target.classList.contains('char-del-btn')) return;
     e.preventDefault();
     moved = false;
@@ -681,12 +681,18 @@ function makeCharDraggable(el) {
       el.style.right = 'auto'; el.style.bottom = 'auto';
     };
     const up = () => {
-      document.removeEventListener('mousemove', mv);
-      document.removeEventListener('mouseup', up);
-      if (!moved) selectChar(el.dataset.charId);
+      document.removeEventListener('pointermove', mv);
+      document.removeEventListener('pointerup', up);
+      if (!moved) { selectChar(el.dataset.charId); return; }
+      const pr2 = el.parentElement.getBoundingClientRect();
+      if (pr2.width && pr2.height) {
+        el.style.left = (parseFloat(el.style.left) / pr2.width * 100).toFixed(2) + '%';
+        el.style.top  = (parseFloat(el.style.top)  / pr2.height * 100).toFixed(2) + '%';
+      }
+      autoSaveDeco();
     };
-    document.addEventListener('mousemove', mv);
-    document.addEventListener('mouseup', up);
+    document.addEventListener('pointermove', mv);
+    document.addEventListener('pointerup', up);
   });
 }
 function applyCharLayer() {
@@ -700,7 +706,11 @@ function applyCharLayerFromFile(input) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('⚠️ 이미지 파일만 올릴 수 있어요'); input.value=''; return; }
   const reader = new FileReader();
-  reader.onload = () => { addCharacterImage(reader.result); input.value=''; };
+  reader.onload = async () => {
+    showToast('⏳ 캐릭터 그림 크기를 줄이는 중...');
+    const small = await shrinkForCloud(reader.result);
+    addCharacterImage(small); input.value='';
+  };
   reader.onerror = () => { showToast('⚠️ 파일을 읽지 못했어요'); input.value=''; };
   reader.readAsDataURL(file);
 }
@@ -728,6 +738,7 @@ function addCharacterImage(src) {
     if (selectedCharId === id) selectedCharId = null;
     updateCharCount();
     showToast('🗑 캐릭터 제거됨');
+    autoSaveDeco();
   };
   wrap.appendChild(img); wrap.appendChild(delBtn);
   makeCharDraggable(wrap);
@@ -735,6 +746,7 @@ function addCharacterImage(src) {
   selectChar(id);
   updateCharCount();
   showToast('✅ 캐릭터 추가됨! 드래그해서 위치를 옮길 수 있어요');
+  autoSaveDeco();
   return true;
 }
 
@@ -742,7 +754,7 @@ function removeCharLayer() {
   const slide = getCurrentSlideEl(); if (!slide) return;
   let target = selectedCharId ? slide.querySelector(`.char-wrap[data-char-id="${selectedCharId}"]`) : null;
   if (!target) { const all = slide.querySelectorAll('.char-wrap'); target = all[all.length - 1]; }
-  if (target) { target.remove(); selectedCharId = null; showToast('🗑 캐릭터 제거됨'); }
+  if (target) { target.remove(); selectedCharId = null; showToast('🗑 캐릭터 제거됨'); autoSaveDeco(); }
   else showToast('⚠️ 제거할 캐릭터가 없어요');
   updateCharCount();
 }
@@ -799,12 +811,14 @@ function toggleLoopAnim(type) {
     const btn = document.getElementById('anim-' + type); if(btn) btn.classList.add('active');
     showToast('✨ ' + type + ' 효과 적용!');
   }
+  autoSaveDeco();
 }
 function stopLoopAnim() {
   const ch = getCharEl(); if (!ch) return;
   ['char-anim-float','char-anim-breathe','char-anim-sway','char-anim-nod','char-anim-sparkle','char-anim-bounce'].forEach(c => ch.classList.remove(c));
   ['anim-float','anim-breathe','anim-sway','anim-nod','anim-sparkle','anim-bounce'].forEach(id => { const b=document.getElementById(id); if(b) b.classList.remove('active'); });
   currentLoopAnim = null; showToast('⏹ 상시 효과 중지');
+  autoSaveDeco();
 }
 function spawnCharHeart() {
   const ch = getCharEl();
@@ -1254,7 +1268,7 @@ let _autoSaveT=null;
 function autoSaveDeco(){ clearTimeout(_autoSaveT); _autoSaveT=setTimeout(()=>{ try{ saveDecorations(false); }catch(e){} },600); }
 function makeDraggable(el){
   let sx,sy,sl,st;
-  el.addEventListener('mousedown',e=>{
+  el.addEventListener('pointerdown',e=>{
     if(e.target.classList.contains('bubble-del'))return;
     e.preventDefault();
     const r=el.getBoundingClientRect(),pr=el.parentElement.getBoundingClientRect();
@@ -1264,8 +1278,8 @@ function makeDraggable(el){
       el.style.left=((sl+mv.clientX-sx)/pw*100).toFixed(2)+'%';
       el.style.top =((st+mv.clientY-sy)/ph*100).toFixed(2)+'%';
     };
-    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);autoSaveDeco();};
-    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    const up=()=>{document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);autoSaveDeco();};
+    document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up);
   });
 }
 function clearBubbles(){const s=getCurrentSlideEl();if(s)s.querySelectorAll('.speech-bubble').forEach(b=>b.remove());autoSaveDeco();}
@@ -1321,7 +1335,7 @@ function collectSlideDecorations(container){
   if(!container) return {chars:[],bubbles:[]};
   const chars=[...container.querySelectorAll('.char-wrap')].map(wrap=>{
     const img=wrap.querySelector('.char-layer');
-    const animClass=(img?.className.match(/char-anim-\S+/g)||[]).filter(c=>['char-anim-float','char-anim-breathe','char-anim-sway'].includes(c));
+    const animClass=(img?.className.match(/char-anim-\S+/g)||[]).filter(c=>['char-anim-float','char-anim-breathe','char-anim-sway','char-anim-nod','char-anim-sparkle','char-anim-bounce'].includes(c));
     return { src: img?.getAttribute('src')||'', left: wrap.style.left||'', top: wrap.style.top||'', loopAnim: animClass[0]||'' };
   });
   const bubbles=[...container.querySelectorAll('.speech-bubble')].map(b=>{
@@ -1341,24 +1355,66 @@ function decoIndexOf(key){
   return Number(key);                                   // 예전 방식(숫자)도 그대로 읽음
 }
 function buildDecoData(){
-  const data = { effects: Array.from(activeEffects), scenes: {} };
+  const data = { savedAt: Date.now(), effects: Array.from(activeEffects), scenes: {} };
   data.scenes['cover'] = collectSlideDecorations(getSlideKeyEl('cover'));
   data.scenes['end']   = collectSlideDecorations(getSlideKeyEl('end'));
   for (let i=0;i<TOTAL;i++) data.scenes[decoKeyOf(i)] = collectSlideDecorations(getSlideKeyEl(i));
   return data;
 }
+/* 이 기기 저장 칸 — 반·학생마다 따로 (같은 컴퓨터를 여러 학생이 써도 섞이지 않게) */
+function decoLocalKey(){
+  if (ROOM_CTX.teacher && ROOM_CTX.room)
+    return `${DECORATION_STORAGE_KEY}:${ROOM_CTX.teacher}:${ROOM_CTX.room}:${ROOM_CTX.student || (ROOM_CTX.group ? 'g'+ROOM_CTX.group : 'all')}`;
+  return DECORATION_STORAGE_KEY;
+}
 function saveDecorations(showConfirm){
   const data = buildDecoData();
-  try{
-    localStorage.setItem(DECORATION_STORAGE_KEY, JSON.stringify(data));
-    if(showConfirm) showToast('✅ 캐릭터·말풍선·효과 저장 완료! 새로고침해도 유지돼요');
-  }catch(e){
-    if(showConfirm) showToast('❌ 저장 실패: '+e.message);
+  let localOk = true;
+  try { localStorage.setItem(decoLocalKey(), JSON.stringify(data)); } catch(e) { localOk = false; }
+  if (roomLinked() && !isTeacherView()) {
+    if (showConfirm) showToast('⏳ 저장 중... 학급 서버에 올리고 있어요');
+    pushDecoToRoom(data, showConfirm);
+  } else if (showConfirm) {
+    if (!localOk) showToast('❌ 이 기기 저장 공간이 부족해 저장하지 못했어요');
+    else if (isTeacherView()) showToast('✅ 이 기기에만 저장했어요 (선생님 보기 화면은 학생 기록을 바꾸지 않아요)');
+    else showToast('✅ 이 기기에 저장했어요 — 학급 연결이 없어 다른 기기에서는 안 보여요');
   }
-  pushDecoToRoom(data, showConfirm);
 }
-/* ── 학급 서버로 올리기 — 선생님 화면에서도 보이도록 ──
-   선생님 링크가 개인·모둠·반 중 무엇으로 열릴지 모르니 해당되는 곳에 모두 올려둡니다. */
+
+/* ── 캐릭터 그림 줄이기 — 휴대폰 사진은 몇 MB라 서버(문서 1개 1MB 제한)에 못 올라가요 ── */
+function shrinkImageDataUrl(src, maxSide){
+  return new Promise(res => {
+    if (!src || !src.startsWith('data:image')) return res(src);
+    const im = new Image();
+    im.onload = () => {
+      const sc = Math.min(1, maxSide / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+      const w = Math.max(1, Math.round(im.naturalWidth * sc)), h = Math.max(1, Math.round(im.naturalHeight * sc));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(im, 0, 0, w, h);
+      let out = cv.toDataURL('image/webp', 0.85);                 // 투명 배경 유지
+      if (!out.startsWith('data:image/webp')) out = cv.toDataURL('image/png');
+      res(out.length < src.length ? out : src);
+    };
+    im.onerror = () => res(src);
+    im.src = src;
+  });
+}
+async function shrinkForCloud(src){
+  let out = await shrinkImageDataUrl(src, 640);
+  if (out.length > 600000) out = await shrinkImageDataUrl(src, 420);
+  if (out.length > 600000) out = await shrinkImageDataUrl(src, 300);
+  return out;
+}
+function hashStr(str){
+  let h = 2166136261 >>> 0;
+  const step = str.length > 300000 ? 7 : 1;
+  for (let i = 0; i < str.length; i += step) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>>0; }
+  return h.toString(36) + '_' + str.length.toString(36);
+}
+
+/* ── 학급 서버로 올리기 — 다른 기기·선생님 화면에서도 보이도록 ──
+   선생님 링크가 개인·모둠·반 중 무엇으로 열릴지 모르니 해당되는 곳에 모두 올려둡니다.
+   캐릭터 그림은 배치 정보와 따로, 그림마다 한 문서(img_…)에 저장합니다. */
 function decoDocKeys(){
   const keys = [];
   if (ROOM_CTX.student) keys.push('s_'+ROOM_CTX.student);
@@ -1366,29 +1422,65 @@ function decoDocKeys(){
   keys.push('room');
   return keys;
 }
+const DECO_IMG_REF = 'ref:';
+const _decoImgKeyCache = new Map();   // 원본 그림 → 서버 문서 이름 (같은 그림은 다시 안 올림)
+let _decoFailToastAt = 0;
 async function pushDecoToRoom(data, showConfirm){
   if (!roomLinked() || isTeacherView()) return;          // 선생님 화면에서는 올리지 않음(보기 전용)
-  const payload = {
-    deco: JSON.stringify(data),
-    studentNumber: ROOM_CTX.student || null,
-    groupNumber: ROOM_CTX.group || null,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  };
   try {
+    const cloud = JSON.parse(JSON.stringify(data));
+    const chars = Object.values(cloud.scenes || {}).flatMap(d => d.chars || []);
+    for (const ch of chars) {
+      if (!ch.src || !ch.src.startsWith('data:')) continue;
+      const origHash = hashStr(ch.src);
+      let key = _decoImgKeyCache.get(origHash);
+      if (!key) {
+        const small = ch.src.length > 600000 ? await shrinkForCloud(ch.src) : ch.src;
+        if (small.length > 950000) throw new Error('캐릭터 그림이 너무 커요');
+        key = 'img_' + hashStr(small);
+        await decoCol().doc(key).set({ img: small, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        _decoImgKeyCache.set(origHash, key);
+      }
+      ch.src = DECO_IMG_REF + key;
+    }
+    const payload = {
+      deco: JSON.stringify(cloud),
+      savedAt: data.savedAt || Date.now(),
+      studentNumber: ROOM_CTX.student || null,
+      groupNumber: ROOM_CTX.group || null,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
     await Promise.all(decoDocKeys().map(k => decoCol().doc(k).set(payload, { merge:true })));
-    if (showConfirm) showToast('✅ 저장 완료 — 선생님 화면에서도 보여요');
+    if (showConfirm) showToast('✅ 저장 완료 — 다른 기기와 선생님 화면에서도 보여요');
   } catch(e) {
-    console.warn('말풍선 학급 공유 실패', e);
-    if (showConfirm) showToast('⚠️ 이 기기에는 저장했지만 학급 공유는 실패했어요');
+    console.warn('캐릭터·말풍선 학급 저장 실패', e);
+    if (showConfirm || Date.now() - _decoFailToastAt > 30000) {
+      _decoFailToastAt = Date.now();
+      showToast('⚠️ 학급 서버 저장 실패 — 이 기기에만 남아 있어요 (' + (e.message || '연결 확인') + ')');
+    }
   }
+}
+async function resolveDecoImages(data){
+  const chars = Object.values(data.scenes || {}).flatMap(d => d.chars || []);
+  const keys = [...new Set(chars.map(c => c.src).filter(x => x && x.startsWith(DECO_IMG_REF)).map(x => x.slice(DECO_IMG_REF.length)))];
+  const map = {};
+  await Promise.all(keys.map(async k => {
+    try { const snap = await decoCol().doc(k).get(); if (snap.exists) map[k] = snap.data().img; } catch(e) {}
+  }));
+  chars.forEach(c => { if (c.src && c.src.startsWith(DECO_IMG_REF)) c.src = map[c.src.slice(DECO_IMG_REF.length)] || ''; });
+  return data;
 }
 async function pullDecoFromRoom(){
   if (!roomLinked()) return null;
   for (const k of decoDocKeys()) {
     try {
       const snap = await decoCol().doc(k).get();
-      if (snap.exists && snap.data().deco) return JSON.parse(snap.data().deco);
-    } catch(e) { console.warn('말풍선 불러오기 실패', e); return null; }
+      if (snap.exists && snap.data().deco) {
+        const data = JSON.parse(snap.data().deco);
+        if (!data.savedAt) data.savedAt = snap.data().savedAt || (snap.data().updatedAt?.seconds || 0) * 1000;
+        return await resolveDecoImages(data);
+      }
+    } catch(e) { console.warn('캐릭터·말풍선 불러오기 실패', e); return null; }
   }
   return null;
 }
@@ -1407,7 +1499,7 @@ function restoreCharWrap(container, item){
   const delBtn = document.createElement('button');
   delBtn.className = 'char-del-btn';
   delBtn.textContent = '✕';
-  delBtn.onclick = (e) => { e.stopPropagation(); wrap.remove(); if(selectedCharId===id) selectedCharId=null; updateCharCount(); };
+  delBtn.onclick = (e) => { e.stopPropagation(); wrap.remove(); if(selectedCharId===id) selectedCharId=null; updateCharCount(); autoSaveDeco(); };
   wrap.appendChild(img); wrap.appendChild(delBtn);
   makeCharDraggable(wrap);
   container.appendChild(wrap);
@@ -1422,12 +1514,20 @@ function restoreBubbleEl(container, item){
   container.appendChild(bubble);
 }
 async function restoreDecorations(){
-  let data = null;
-  if (isTeacherView()) data = await pullDecoFromRoom();       // 선생님 화면은 학생이 올린 것을 본다
-  if (!data) {
-    let raw; try{ raw = localStorage.getItem(DECORATION_STORAGE_KEY); }catch(e){ return; }
-    if(!raw) { data = await pullDecoFromRoom(); }              // 이 기기에 없으면 학급 것이라도
-    else { try{ data = JSON.parse(raw); }catch(e){ return; } }
+  let local = null;
+  try { const raw = localStorage.getItem(decoLocalKey()); if (raw) local = JSON.parse(raw); } catch(e) {}
+  const remote = roomLinked() ? await pullDecoFromRoom() : null;
+  let data;
+  if (isTeacherView()) data = remote || local;               // 선생님 화면은 학생이 올린 것을 우선
+  else if (local && remote) data = (remote.savedAt || 0) > (local.savedAt || 0) ? remote : local;
+  else data = remote || local;
+  // 예전 방식(반·학생 구분 없는 저장 칸)에 남은 것 — 지금 장면과 짝이 맞을 때만 가져옴
+  if (!data && decoLocalKey() !== DECORATION_STORAGE_KEY) {
+    try {
+      const legacy = JSON.parse(localStorage.getItem(DECORATION_STORAGE_KEY) || 'null');
+      const matches = legacy && legacy.scenes && Object.keys(legacy.scenes).some(k => String(k).startsWith('id:') && decoIndexOf(k) !== null);
+      if (matches) data = legacy;
+    } catch(e) {}
   }
   if(!data || !data.scenes) return;
   Object.keys(data.scenes).forEach(rawKey=>{

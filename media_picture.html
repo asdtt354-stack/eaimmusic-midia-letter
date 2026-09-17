@@ -1272,7 +1272,7 @@ function closeStudentView(){ document.getElementById('student-view-modal').style
 
 function renderStudentView({ scenes, npScenes = [], newspaper, letter, interview, room, studentData, rId, studentId }){
   const scope = room.shareScope || 'room';
-  let slideshowUrl = `slideshow.html?mode=teacher&teacher=${teacherUid}&room=${rId}`;
+  let slideshowUrl = `slideshow.html?mode=teacher&teacher=${teacherUid}&room=${rId}&v=${Date.now()}`;
   let scopeNote = '';
   if (scope === 'individual') { slideshowUrl += `&student=${studentId}`; }
   else if (scope === 'group') {
@@ -2294,7 +2294,8 @@ function goToSlideshow() {
   if (roomId)     q.push('room='    + encodeURIComponent(roomId));
   if (STUDENT_NUMBER) q.push('student=' + encodeURIComponent(STUDENT_NUMBER));
   if (typeof STUDENT_GROUP !== 'undefined' && STUDENT_GROUP) q.push('group=' + encodeURIComponent(STUDENT_GROUP));
-  location.href = 'slideshow.html' + (q.length ? '?' + q.join('&') : '');
+  q.push('v=' + Date.now());   // 휴대폰 브라우저가 예전 슬라이드쇼를 붙잡고 있지 않도록 매번 새로 받기
+  location.href = 'slideshow.html?' + q.join('&');
 }
 
 function closeModal(id) {
