@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>음악인터뷰 활동지 — EAIM 미디어레터</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#12024a;--purple:#6a2fe0;--teal:#00738a;--rose:#d1206b;--green:#1f6144;--paper:#fdfbf6;--line:#e0daf4;--muted:#7a6fa0;--lp:#f0ebff;--lt:#e6f5f8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#ede9f8;padding:16px;color:var(--ink);}
+.page{background:var(--paper);max-width:780px;margin:0 auto;padding:32px 36px;border-radius:6px;box-shadow:0 4px 32px rgba(106,47,224,.12);}
+/* 헤더 */
+.header{border-top:5px solid var(--purple);border-bottom:2px solid var(--purple);padding:12px 0 10px;margin-bottom:20px;}
+.h-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+.badge{font-size:10px;letter-spacing:3px;color:var(--purple);font-weight:700;background:var(--lp);padding:3px 10px;border-radius:10px;display:inline-block;margin-bottom:6px;}
+.h-title{font-family:'Black Han Sans',sans-serif;font-size:30px;color:var(--ink);}
+.h-title em{color:var(--purple);font-style:normal;}
+.h-sub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.7;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:200px;}
+.info-row{display:flex;align-items:center;gap:6px;font-size:12px;}
+.info-row label{color:var(--muted);min-width:40px;}
+.info-row input{flex:1;border:none;border-bottom:1px solid var(--ink);background:transparent;font-size:12px;padding:2px 4px;font-family:'Noto Sans KR',sans-serif;color:var(--ink);outline:none;}
+/* 섹션 */
+.sec{margin-bottom:22px;}
+.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sn{width:26px;height:26px;border-radius:50%;background:var(--purple);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sn.t{background:var(--teal);} .sn.r{background:var(--rose);} .sn.g{background:var(--green);}
+.st{font-size:14px;font-weight:800;}
+.sdesc{font-size:11.5px;color:var(--muted);margin-left:36px;margin-top:-5px;margin-bottom:10px;line-height:1.7;}
+/* 테이블 */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--lp);color:var(--purple);font-weight:700;padding:7px 10px;border:1px solid var(--line);width:100px;text-align:left;vertical-align:top;}
+.tbl td{padding:6px 10px;border:1px solid var(--line);vertical-align:top;}
+.tbl textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;color:var(--ink);background:transparent;outline:none;min-height:36px;line-height:1.7;}
+/* 번역코드 */
+.code-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+.cc{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;}
+.cc-title{font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:7px;border-bottom:1.5px solid var(--lt);padding-bottom:4px;}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px;}
+.tag{font-size:11px;padding:2px 7px;border-radius:10px;background:var(--lt);color:var(--teal);font-weight:600;cursor:pointer;transition:all .15s;user-select:none;}
+.tag.on{background:var(--teal);color:#fff;}
+.my-input{width:100%;border:none;border-bottom:1px solid #ccc;font-size:11.5px;padding:3px 2px;color:var(--ink);background:transparent;font-family:'Noto Sans KR',sans-serif;outline:none;}
+.my-input::placeholder{color:#ccc;font-size:11px;}
+.feel-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.feel-box{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;}
+.feel-title{font-size:11px;font-weight:700;color:var(--rose);margin-bottom:5px;}
+.feel-box textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;color:var(--ink);background:transparent;outline:none;min-height:48px;line-height:1.7;}
+/* 인터뷰 */
+.setting-box{background:var(--lp);border-left:4px solid var(--purple);padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;}
+.setting-box input{border:none;border-bottom:1px solid #999;background:transparent;font-size:12px;min-width:80px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);}
+.qa{margin-bottom:16px;}
+.q-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:7px;}
+.qb{width:22px;height:22px;background:var(--ink);color:#fff;border-radius:4px;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.q-text{font-size:13px;font-weight:700;flex:1;line-height:1.6;}
+.qhint{font-size:11px;color:var(--muted);font-weight:400;}
+.a-area{margin-left:32px;border-left:2px solid var(--lp);padding-left:12px;}
+.ab{font-size:11px;font-weight:700;color:var(--purple);margin-bottom:4px;}
+.a-area textarea{width:100%;border:none;border-bottom:1px solid #ddd;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;color:var(--ink);background:transparent;outline:none;min-height:64px;line-height:1.8;}
+.freeq{border:1.5px dashed var(--purple);border-radius:8px;padding:12px 14px;background:#faf8ff;margin-bottom:16px;}
+.fq-label{font-size:11px;font-weight:700;color:var(--purple);margin-bottom:7px;}
+.fq-input{width:100%;border:none;border-bottom:1.5px solid var(--purple);background:transparent;font-size:13px;font-weight:700;color:var(--ink);padding:3px 2px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:10px;}
+/* 성찰 */
+.reflect{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.rb{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;}
+.ri{font-size:18px;margin-bottom:4px;}
+.rq{font-size:11.5px;font-weight:700;margin-bottom:5px;line-height:1.5;}
+.rb textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:11.5px;color:var(--ink);background:transparent;outline:none;min-height:52px;line-height:1.7;}
+/* 구분선 */
+.div{height:1px;background:linear-gradient(90deg,var(--purple),var(--teal),transparent);margin:16px 0;opacity:.2;}
+/* 버튼 바 */
+.btn-bar{display:flex;gap:10px;justify-content:center;margin:20px 0;flex-wrap:wrap;}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.btn-save{background:var(--purple);color:#fff;}
+.btn-print{background:var(--teal);color:#fff;}
+.btn-clear{background:#f0ebff;color:var(--purple);border:1.5px solid var(--purple);}
+.save-msg{font-size:12px;color:var(--green);font-weight:700;opacity:0;transition:opacity .3s;}
+.save-msg.show{opacity:1;}
+/* 푸터 */
+.footer{border-top:2px solid var(--line);margin-top:16px;padding-top:8px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);}
+@media print{body{background:#fff;padding:0;}.page{box-shadow:none;padding:20px 28px;}.btn-bar{display:none;}@page{margin:8mm;size:A4}}
+@media(max-width:600px){.code-grid{grid-template-columns:1fr;}.feel-grid{grid-template-columns:1fr;}.reflect{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<a href="index.html" class="back-link" style="display:inline-block;margin:10px 0 0 10px;color:#7aa7ff;text-decoration:none;font-size:14px">← 활동지 목록</a>
+<style>@media print{.back-link{display:none !important}}</style>
+<div class="page">
+  <div class="header">
+    <div class="h-top">
+      <div>
+        <div class="badge">✦ EAIM 미디어레터</div>
+        <div class="h-title">음악 <em>인터뷰</em> 활동지</div>
+        <div class="h-sub">음악을 조사하고 · 느끼고 · 작곡가의 목소리로 이야기하다</div>
+      </div>
+      <div class="info-grid">
+        <div class="info-row"><label>학년 반</label><input id="i-class" placeholder="  "></div>
+        <div class="info-row"><label>번호</label><input id="i-num" placeholder="  "></div>
+        <div class="info-row"><label>이름</label><input id="i-name" placeholder="  "></div>
+        <div class="info-row"><label>날짜</label><input id="i-date" placeholder="  "></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">1</div><div class="st">작곡가 조사하기</div></div>
+    <div class="sdesc">감상할 음악의 작곡가를 한 명 선택하여 아래를 조사하세요.</div>
+    <table class="tbl">
+      <tr><th>작곡가 이름</th><td><textarea id="f-name" rows="1" placeholder="작곡가 이름을 쓰세요"></textarea></td><th style="width:90px;">국적</th><td><textarea id="f-nation" rows="1" placeholder="국적"></textarea></td></tr>
+      <tr><th>활동 시대</th><td><textarea id="f-era" rows="1" placeholder="예: 19세기 낭만주의, 20세기 초"></textarea></td><th>음악 사조</th><td><textarea id="f-style" rows="1" placeholder="예: 인상주의, 고전주의"></textarea></td></tr>
+      <tr><th>생애 핵심 사건</th><td colspan="3"><textarea id="f-life" rows="2" placeholder="태어난 곳, 중요한 일, 활동 등"></textarea></td></tr>
+      <tr><th>대표 작품</th><td colspan="3"><textarea id="f-works" rows="2" placeholder="대표곡 2~3개를 써보세요"></textarea></td></tr>
+      <tr><th>음악의 특징</th><td colspan="3"><textarea id="f-char" rows="3" placeholder="리듬, 화성, 음색, 구성 등 이 작곡가만의 특징"></textarea></td></tr>
+      <tr><th>시대적 배경</th><td colspan="3"><textarea id="f-bg" rows="2" placeholder="이 음악이 탄생한 시대의 사회·문화적 상황"></textarea></td></tr>
+    </table>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- STEP 2 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn t">2</div><div class="st">대표 음악 감상 &amp; 번역코드</div></div>
+    <div class="sdesc">대표곡을 감상하며 느낌에 해당하는 태그를 눌러 선택하고, 나만의 단어도 추가하세요.</div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:10px;">감상 곡명 : <input id="f-song" style="border:none;border-bottom:1px solid #999;min-width:260px;font-size:12px;font-weight:700;background:transparent;outline:none;padding:2px 4px;" placeholder="곡 이름을 쓰세요"></div>
+    <div class="code-grid">
+      <div class="cc"><div class="cc-title">🎨 색채 · 분위기</div><div class="tags" id="tg1">
+        <span class="tag" data-g="1">흐릿한</span><span class="tag" data-g="1">선명한</span><span class="tag" data-g="1">어두운</span><span class="tag" data-g="1">투명한</span><span class="tag" data-g="1">몽환적인</span><span class="tag" data-g="1">차가운</span><span class="tag" data-g="1">따뜻한</span><span class="tag" data-g="1">화려한</span>
+      </div><input class="my-input" id="my1" placeholder="나만의 단어 →"></div>
+      <div class="cc"><div class="cc-title">💫 에너지 · 움직임</div><div class="tags" id="tg2">
+        <span class="tag" data-g="2">폭발적인</span><span class="tag" data-g="2">고요한</span><span class="tag" data-g="2">날카로운</span><span class="tag" data-g="2">부드러운</span><span class="tag" data-g="2">불안한</span><span class="tag" data-g="2">당당한</span><span class="tag" data-g="2">섬세한</span><span class="tag" data-g="2">역동적인</span>
+      </div><input class="my-input" id="my2" placeholder="나만의 단어 →"></div>
+      <div class="cc"><div class="cc-title">🌊 소리의 흐름</div><div class="tags" id="tg3">
+        <span class="tag" data-g="3">물결치는</span><span class="tag" data-g="3">끊어지는</span><span class="tag" data-g="3">쌓이는</span><span class="tag" data-g="3">반복되는</span><span class="tag" data-g="3">확장되는</span><span class="tag" data-g="3">사라지는</span><span class="tag" data-g="3">치솟는</span>
+      </div><input class="my-input" id="my3" placeholder="나만의 단어 →"></div>
+    </div>
+    <div class="feel-grid">
+      <div class="feel-box"><div class="feel-title">🎵 가장 인상적인 부분</div><textarea id="f-impress" placeholder="어느 부분이 가장 기억에 남나요?"></textarea></div>
+      <div class="feel-box"><div class="feel-title">💬 이 음악이 전하는 이야기 (내 생각)</div><textarea id="f-story" placeholder="이 음악이 어떤 이야기를 담고 있다고 느꼈나요?"></textarea></div>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- STEP 3 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn r">3</div><div class="st">작곡가 인터뷰 쓰기</div></div>
+    <div class="sdesc">내가 기자가 되어 작곡가를 만난다면? 조사한 내용을 바탕으로 작곡가의 목소리로 답변을 써보세요.</div>
+    <div class="setting-box">
+      <strong style="color:var(--purple);">인터뷰 설정</strong> — 때는 <input id="s-year" style="width:80px;" placeholder="    년"> , 장소는 <input id="s-place" style="width:110px;" placeholder="장소"> . 나는 음악 전문 기자로서 작곡가 <input id="s-who" style="width:80px;" placeholder="이름"> 를(을) 직접 만났다.
+    </div>
+    <div class="qa">
+      <div class="q-row"><div class="qb">Q</div><div class="q-text">선생님의 음악에서 가장 중요하게 생각하시는 것은 무엇인가요? <span class="qhint">— 음악적 철학, 추구하는 가치</span></div></div>
+      <div class="a-area"><div class="ab">A. 작곡가의 대답</div><textarea id="q1a" placeholder="조사한 내용을 바탕으로 작곡가의 목소리로 써보세요."></textarea></div>
+    </div>
+    <div class="qa">
+      <div class="q-row"><div class="qb">Q</div><div class="q-text">대표작 <input id="q2-title" style="border:none;border-bottom:1px solid #999;min-width:100px;background:transparent;font-size:13px;font-weight:700;outline:none;padding:2px 4px;" placeholder="곡 이름"> 은(는) 어떻게 탄생했나요? 가장 표현하고 싶었던 것은 무엇입니까?</div></div>
+      <div class="a-area"><div class="ab">A. 작곡가의 대답</div><textarea id="q2a" placeholder="이 곡의 탄생 배경과 작곡가의 의도를 써보세요."></textarea></div>
+    </div>
+    <div class="qa">
+      <div class="q-row"><div class="qb">Q</div><div class="q-text">선생님이 살았던 시대와 삶의 경험이 음악에 어떤 영향을 주었나요?</div></div>
+      <div class="a-area"><div class="ab">A. 작곡가의 대답</div><textarea id="q3a" placeholder="시대 배경과 작곡가의 삶이 음악에 미친 영향을 써보세요."></textarea></div>
+    </div>
+    <div class="freeq">
+      <div class="fq-label">✏️ 내가 만든 질문 (자유 질문)</div>
+      <input class="fq-input" id="myq" placeholder="내가 이 작곡가에게 가장 묻고 싶은 것은?">
+      <div class="a-area" style="border-left-color:var(--lp);"><div class="ab">A. 작곡가의 대답</div><textarea id="myqa" placeholder="작곡가라면 뭐라고 대답할까요?"></textarea></div>
+    </div>
+  </div>
+
+  <!-- STEP 4 성찰 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn g">4</div><div class="st">오늘 나의 성찰</div></div>
+    <div class="reflect">
+      <div class="rb"><div class="ri">🔍</div><div class="rq">이 작곡가의 음악에서 가장 새롭게 발견한 것</div><textarea id="r1" placeholder="써보세요"></textarea></div>
+      <div class="rb"><div class="ri">🔗</div><div class="rq">이 음악이 나의 일상과 연결되는 부분</div><textarea id="r2" placeholder="써보세요"></textarea></div>
+      <div class="rb"><div class="ri">⭐</div><div class="rq">다음에 더 알고 싶은 음악 또는 작곡가</div><textarea id="r3" placeholder="써보세요"></textarea></div>
+    </div>
+  </div>
+
+  <!-- 버튼 바 -->
+  <div class="btn-bar">
+    <button class="btn btn-save" onclick="saveData()">💾 저장하기</button>
+    <button class="btn btn-print" onclick="window.print()">🖨 인쇄 / PDF</button>
+    <button class="btn btn-clear" onclick="clearData()">🗑 초기화</button>
+    <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
+  </div>
+
+  <div class="footer">
+    <span><b style="color:var(--purple);">EAIM</b> 미디어레터 · 음악인터뷰 활동지</span>
+    <span>Emotion · Artscape · Interactive · Musicalization</span>
+  </div>
+</div>
+
+<script>
+const KEY = 'eaim_interview_v1';
+const IDS = ['i-class','i-num','i-name','i-date','f-name','f-nation','f-era','f-style','f-life','f-works','f-char','f-bg','f-song','my1','my2','my3','f-impress','f-story','s-year','s-place','s-who','q2-title','q1a','q2a','q3a','myq','myqa','r1','r2','r3'];
+const TAG_KEY = 'eaim_interview_tags_v1';
+
+function saveData(){
+  try{
+    const d={};
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el)d[id]=el.value;});
+    const sel=[];
+    document.querySelectorAll('.tag.on').forEach(t=>sel.push(t.textContent));
+    localStorage.setItem(KEY,JSON.stringify(d));
+    localStorage.setItem(TAG_KEY,JSON.stringify(sel));
+    const msg=document.getElementById('save-msg');
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'),2000);
+  }catch(e){alert('저장 중 오류가 발생했습니다.');}
+}
+
+function loadData(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el&&d[id]!==undefined)el.value=d[id];});
+    const sel=JSON.parse(localStorage.getItem(TAG_KEY)||'[]');
+    document.querySelectorAll('.tag').forEach(t=>{if(sel.includes(t.textContent))t.classList.add('on');});
+  }catch(e){}
+}
+
+function clearData(){
+  if(!confirm('모든 내용을 지울까요?'))return;
+  try{localStorage.removeItem(KEY);localStorage.removeItem(TAG_KEY);}catch(e){}
+  IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.tag.on').forEach(t=>t.classList.remove('on'));
+}
+
+document.querySelectorAll('.tag').forEach(t=>{
+  t.addEventListener('click',()=>{t.classList.toggle('on');saveData();});
+});
+
+// 자동 저장
+let timer;
+document.querySelectorAll('input,textarea').forEach(el=>{
+  el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(saveData,1500);});
+});
+
+loadData();
+</script>
+</body>
+</html>

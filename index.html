@@ -3,100 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>에임뮤직-미디어-레터 — EAIM</title>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<title>EAIM 미디어레터 활동지</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#fdfbf6;
-  --surface:#ffffff;
-  --surface2:#f2eafb;
-  --accent:#6a2fe0;
-  --accent2:#d1206b;
-  --accent3:#00738a;
-  --gold:#7a5312;
-  --green:#1f6144;
-  --text:#170f22;
-  --text2:#463a5a;
-  --radius:16px;
+  --purple:#6a2fe0;--teal:#00738a;--rose:#c8185e;
+  --ink:#12024a;--paper:#fdfbf6;--line:#e0daf4;--muted:#7a6fa0;
+  --lp:#f0ebff;--lt:#e6f5f8;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;display:flex;align-items:center;justify-content:center}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:linear-gradient(135deg,#1a0060 0%,#00435a 100%);
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.wrap{
+  width:100%;max-width:680px;
+}
+/* 헤더 */
+.header{
+  text-align:center;margin-bottom:28px;
+}
+.eaim-logo{
+  font-family:'Black Han Sans',sans-serif;
+  font-size:15px;letter-spacing:6px;
+  color:rgba(255,255,255,.5);
+  margin-bottom:10px;
+}
+.main-title{
+  font-family:'Black Han Sans',sans-serif;
+  font-size:36px;color:#fff;line-height:1.2;
+  margin-bottom:8px;
+}
+.main-title em{color:#c8a6ff;font-style:normal;}
+.sub-title{
+  font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;
+}
 
-.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:.18;z-index:0}
-.orb1{width:520px;height:520px;top:-120px;left:-120px;background:var(--accent)}
-.orb2{width:420px;height:420px;bottom:-120px;right:-60px;background:var(--accent2)}
-.orb3{width:320px;height:320px;top:35%;left:42%;background:var(--accent3)}
+/* 순서 흐름 */
+.flow{
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;margin-bottom:24px;flex-wrap:wrap;
+}
+.flow-step{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;
+  padding:5px 12px;
+  font-size:11.5px;color:rgba(255,255,255,.8);
+}
+.flow-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.flow-arrow{color:rgba(255,255,255,.3);font-size:14px;}
 
-.container{position:relative;z-index:1;max-width:640px;width:100%;padding:32px 20px 60px;text-align:center}
+/* 카드 그리드 */
+.cards{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:14px;
+  margin-bottom:20px;
+}
+.card{
+  background:rgba(255,255,255,.97);
+  border-radius:14px;
+  overflow:hidden;
+  text-decoration:none;
+  display:block;
+  transition:transform .18s, box-shadow .18s;
+  box-shadow:0 4px 24px rgba(0,0,0,.18);
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 10px 32px rgba(0,0,0,.28);
+}
+.card-top{
+  height:6px;
+}
+.card.interview .card-top{background:var(--purple);}
+.card.letter .card-top{background:var(--teal);}
+.card.news .card-top{background:var(--rose);}
+.card-body{padding:18px 16px 16px;}
+.card-order{
+  font-size:10px;font-weight:700;
+  letter-spacing:2px;
+  padding:2px 8px;border-radius:10px;
+  display:inline-block;margin-bottom:10px;
+}
+.card.interview .card-order{background:var(--lp);color:var(--purple);}
+.card.letter .card-order{background:var(--lt);color:var(--teal);}
+.card.news .card-order{background:#fce8ee;color:var(--rose);}
+.card-icon{font-size:32px;margin-bottom:10px;display:block;}
+.card-name{
+  font-size:17px;font-weight:900;
+  color:var(--ink);margin-bottom:6px;
+}
+.card.interview .card-name{color:var(--purple);}
+.card.letter .card-name{color:var(--teal);}
+.card.news .card-name{color:var(--rose);}
+.card-desc{
+  font-size:11.5px;color:var(--muted);
+  line-height:1.7;margin-bottom:12px;
+}
+.card-when{
+  font-size:11px;font-weight:700;
+  border-top:1px solid var(--line);
+  padding-top:10px;
+  display:flex;align-items:center;gap:5px;
+}
+.card.interview .card-when{color:var(--purple);}
+.card.letter .card-when{color:var(--teal);}
+.card.news .card-when{color:var(--rose);}
 
-.header-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:20px;background:rgba(124,77,255,.14);border:1.5px solid rgba(124,77,255,.5);font-size:13px;color:var(--accent);letter-spacing:3px;font-weight:700;margin-bottom:20px}
-.header-title{font-family:'Black Han Sans',sans-serif;font-size:clamp(36px,9vw,60px);line-height:1.15;letter-spacing:-1px;background:linear-gradient(135deg,#7c4dff 0%,#e8508a 55%,#0097ae 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px}
-.header-sub{font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:40px;font-weight:500}
+/* 하단 안내 */
+.notice{
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;
+  padding:12px 16px;
+  font-size:12px;
+  color:rgba(255,255,255,.7);
+  line-height:1.8;
+  text-align:center;
+}
+.notice b{color:#fff;}
 
-.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
-@media(max-width:520px){.nav-grid{grid-template-columns:1fr}}
-.nav-card{background:var(--surface);border:2px solid rgba(124,77,255,.3);border-radius:var(--radius);padding:28px 20px;text-decoration:none;color:var(--text);transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 3px 14px rgba(45,36,56,.06);position:relative;overflow:hidden}
-.nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#7c4dff,#c778dd);}
-.nav-card:hover{transform:translateY(-3px);border-color:rgba(124,77,255,.5);box-shadow:0 10px 28px rgba(124,77,255,.18)}
-.nav-card .icon{font-size:44px}
-.nav-card .title{font-size:20px;font-weight:800;color:#4a1f9e}
-.nav-card .desc{font-size:14px;color:var(--text2);line-height:1.7;font-weight:500}
-.nav-card.green::before{background:linear-gradient(90deg,#1f6144,#2e9c66);}
-.nav-card.green .title{color:var(--green);font-weight:800;}
-.nav-card.green:hover{border-color:rgba(31,97,68,.6);box-shadow:0 10px 28px rgba(31,97,68,.22)}
-
-.session-quick{background:var(--surface);border:1.5px solid rgba(124,77,255,.14);border-radius:var(--radius);padding:18px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 2px 10px rgba(45,36,56,.05)}
-.session-quick label{font-size:14px;color:var(--text2);letter-spacing:1px;white-space:nowrap;font-weight:600}
-.session-quick input{flex:1;min-width:140px;background:var(--surface2);border:1.5px solid rgba(124,77,255,.3);color:var(--text);padding:10px 14px;border-radius:8px;font-size:15px;font-family:inherit;outline:none}
-.session-quick input:focus{border-color:var(--green)}
-.session-quick button{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;background:linear-gradient(135deg,#2e7d5a,#52c27a);color:#fff}
-
-.footer-tag{margin-top:28px;font-size:11px;color:rgba(45,36,56,.3);letter-spacing:2px}
+@media(max-width:520px){
+  .cards{grid-template-columns:1fr;}
+  .main-title{font-size:28px;}
+}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <a href="../media_picture.html" style="display:inline-block;margin-bottom:14px;color:#c8a6ff;text-decoration:none;font-size:14px">← 미디어레터로 돌아가기</a>
 
-<div class="orb orb1"></div>
-<div class="orb orb2"></div>
-<div class="orb orb3"></div>
-
-<div class="container">
-  <div class="header-badge">🎵 EAIM</div>
-  <div class="header-title">에임뮤직-미디어-레터</div>
-  <div class="header-sub">음악을 듣고 · 느끼고 · 그림으로 표현하고 · 이야기로 완성하다<br>학급 코드 하나로 여러 기기의 장면이 한곳에 모여요</div>
-
-  <div class="nav-grid">
-    <a class="nav-card" href="media_picture.html">
-      <div class="icon">🎨</div>
-      <div class="title">미디어픽쳐</div>
-      <div class="desc">음악 감상 → 이미지 생성 · 손그림 스케치 →<br>장면 만들기</div>
-    </a>
-    <a class="nav-card green" href="slideshow.html">
-      <div class="icon">🎬</div>
-      <div class="title">슬라이드쇼</div>
-      <div class="desc">모아진 장면들을<br>영화처럼 감상하기</div>
-    </a>
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="eaim-logo">✦ EAIM MEDIA LETTER ✦</div>
+    <div class="main-title">음악 <em>활동지</em></div>
+    <div class="sub-title">감상하고 · 조사하고 · 표현하고 · 신문으로 완성하다</div>
   </div>
 
-  <div class="session-quick">
-    <label>학급 코드로 바로 입장</label>
-    <input id="quick-session" placeholder="예: 3-1-바람의빛깔">
-    <button onclick="quickEnter()">미디어픽쳐로 이동</button>
+  <!-- 순서 흐름 -->
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-dot" style="background:#c8a6ff;"></div>
+      감상 전 — 인터뷰
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">
+      <div class="flow-dot" style="background:#7edcb8;"></div>
+      감상 중 — 미디어레터
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">
+      <div class="flow-dot" style="background:#f0a0b8;"></div>
+      감상 후 — 편지
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">
+      <div class="flow-dot" style="background:#f5c6d0;"></div>
+      마무리 — 신문
+    </div>
   </div>
 
-  <div class="footer-tag">Emotion · Artscape · Interactive · Musicalization</div>
+  <!-- 카드 -->
+  <div class="cards">
+
+    <a class="card interview" href="interview.html">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <span class="card-order">STEP 1</span>
+        <span class="card-icon">🎤</span>
+        <div class="card-name">음악인터뷰</div>
+        <div class="card-desc">
+          작곡가를 조사하고<br>
+          번역코드로 음악을 느끼며<br>
+          인터뷰를 직접 써보세요
+        </div>
+        <div class="card-when">📌 감상 전에 먼저!</div>
+      </div>
+    </a>
+
+    <a class="card letter" href="letter.html">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <span class="card-order">STEP 2</span>
+        <span class="card-icon">✉️</span>
+        <div class="card-name">음악편지</div>
+        <div class="card-desc">
+          음악의 특징을 파악하고<br>
+          느낀 감성과 가치를<br>
+          작곡가에게 편지로 써보세요
+        </div>
+        <div class="card-when">📌 감상 직후에!</div>
+      </div>
+    </a>
+
+    <a class="card news" href="newspaper.html">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <span class="card-order">STEP 3</span>
+        <span class="card-icon">📰</span>
+        <div class="card-name">음악신문</div>
+        <div class="card-desc">
+          음악 요소를 분석하고<br>
+          시대·배경을 비교하여<br>
+          나만의 신문을 완성하세요
+        </div>
+        <div class="card-when">📌 모든 활동 후 마무리!</div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- 안내 -->
+  <div class="notice">
+    💾 <b>자동 저장</b> — 입력하면 이 기기에 자동 저장됩니다. 다시 열면 내용이 복원됩니다.<br>
+    🖨 <b>제출</b> — 각 활동지 하단의 인쇄/PDF 버튼으로 저장 후 패들렛에 제출하세요.
+  </div>
+
 </div>
-
-<script>
-window.addEventListener('load', () => {
-  const saved = localStorage.getItem('eaim_session_code');
-  if (saved) document.getElementById('quick-session').value = saved;
-});
-function quickEnter() {
-  const v = document.getElementById('quick-session').value.trim();
-  if (v) localStorage.setItem('eaim_session_code', v);
-  window.location.href = 'media_picture.html';
-}
-</script>
 </body>
 </html>

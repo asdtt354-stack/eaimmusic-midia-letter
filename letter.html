@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>음악편지 활동지 — EAIM 미디어레터</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#12024a;--purple:#6a2fe0;--teal:#00738a;--rose:#d1206b;--green:#1f6144;--paper:#fdfbf6;--line:#e0daf4;--muted:#7a6fa0;--lp:#f0ebff;--lt:#e6f5f8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#ede9f8;padding:16px;color:var(--ink);}
+.page{background:var(--paper);max-width:780px;margin:0 auto;padding:32px 36px;border-radius:6px;box-shadow:0 4px 32px rgba(0,115,138,.12);}
+.header{border-top:5px solid var(--teal);border-bottom:2px solid var(--teal);padding:12px 0 10px;margin-bottom:20px;}
+.h-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+.badge{font-size:10px;letter-spacing:3px;color:var(--teal);font-weight:700;background:var(--lt);padding:3px 10px;border-radius:10px;display:inline-block;margin-bottom:6px;}
+.h-title{font-family:'Black Han Sans',sans-serif;font-size:30px;color:var(--ink);}
+.h-title em{color:var(--teal);font-style:normal;}
+.h-sub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.7;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:200px;}
+.info-row{display:flex;align-items:center;gap:6px;font-size:12px;}
+.info-row label{color:var(--muted);min-width:40px;}
+.info-row input{flex:1;border:none;border-bottom:1px solid var(--teal);background:transparent;font-size:12px;padding:2px 4px;font-family:'Noto Sans KR',sans-serif;color:var(--ink);outline:none;}
+.ai-notice{background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:7px 12px;font-size:11px;color:#795548;margin-bottom:14px;}
+.sec{margin-bottom:20px;}
+.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sn{width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.st{font-size:14px;font-weight:800;}
+.sdesc{font-size:11.5px;color:var(--muted);margin-left:36px;margin-top:-5px;margin-bottom:10px;line-height:1.7;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--lt);color:var(--teal);font-weight:700;padding:7px 10px;border:1px solid var(--line);width:100px;text-align:left;vertical-align:top;}
+.tbl td{padding:6px 10px;border:1px solid var(--line);vertical-align:top;}
+.tbl textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;color:var(--ink);background:transparent;outline:none;min-height:32px;line-height:1.7;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.box{border:1.5px solid var(--line);border-radius:8px;padding:11px 13px;background:#fff;}
+.box-title{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:6px;}
+.box textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;color:var(--ink);background:transparent;outline:none;min-height:60px;line-height:1.7;}
+.rubric{background:var(--lt);border:1px solid rgba(0,115,138,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;}
+.rubric-title{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:6px;}
+.rr{display:flex;gap:8px;margin-bottom:3px;font-size:11px;}
+.rs{font-weight:900;color:var(--teal);min-width:32px;}
+.rd{color:var(--muted);line-height:1.5;flex:1;}
+.div{height:1px;background:linear-gradient(90deg,var(--teal),var(--green),transparent);margin:16px 0;opacity:.2;}
+/* 편지지 */
+.letter-paper{border:1.5px solid var(--line);border-radius:10px;padding:20px 24px 16px;background:#fff;position:relative;}
+.letter-stamp{position:absolute;top:14px;right:16px;width:50px;height:64px;border:2px solid var(--line);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#f9f9f7;color:#ccc;}
+.letter-to{font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:10px;}
+.letter-to input{border:none;border-bottom:1px solid var(--teal);min-width:130px;background:transparent;font-size:13px;font-weight:700;outline:none;font-family:'Noto Serif KR',serif;color:var(--ink);}
+.letter-body{width:100%;border:none;resize:none;font-family:'Noto Serif KR',serif;font-size:13px;color:var(--ink);background:transparent;outline:none;min-height:260px;line-height:2.2;}
+.letter-from{display:flex;justify-content:flex-end;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px;font-size:12px;color:var(--muted);}
+.letter-from input{border:none;border-bottom:1px solid #ccc;background:transparent;font-size:12px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);}
+.check-box{background:var(--lt);border:1.5px solid rgba(0,115,138,.2);border-radius:6px;padding:10px 14px;margin-top:12px;}
+.check-title{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:7px;}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.check-row{display:flex;align-items:flex-start;gap:8px;font-size:11px;}
+.chk{width:15px;height:15px;border:1.5px solid var(--teal);border-radius:3px;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+.chk.on{background:var(--teal);}
+.reflect{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.rb{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;}
+.ri{font-size:18px;margin-bottom:4px;}
+.rq{font-size:11.5px;font-weight:700;margin-bottom:5px;line-height:1.5;}
+.rb textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:11.5px;color:var(--ink);background:transparent;outline:none;min-height:52px;line-height:1.7;}
+.btn-bar{display:flex;gap:10px;justify-content:center;margin:20px 0;flex-wrap:wrap;}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.btn-save{background:var(--teal);color:#fff;}
+.btn-print{background:var(--purple);color:#fff;}
+.btn-clear{background:var(--lt);color:var(--teal);border:1.5px solid var(--teal);}
+.save-msg{font-size:12px;color:var(--green);font-weight:700;opacity:0;transition:opacity .3s;}
+.save-msg.show{opacity:1;}
+.footer{border-top:2px solid var(--line);margin-top:16px;padding-top:8px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);}
+@media print{body{background:#fff;padding:0;}.page{box-shadow:none;padding:20px 28px;}.btn-bar{display:none;}@page{margin:8mm;size:A4}}
+@media(max-width:600px){.two{grid-template-columns:1fr;}.reflect{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<a href="index.html" class="back-link" style="display:inline-block;margin:10px 0 0 10px;color:#7aa7ff;text-decoration:none;font-size:14px">← 활동지 목록</a>
+<style>@media print{.back-link{display:none !important}}</style>
+<div class="page">
+  <div class="header">
+    <div class="h-top">
+      <div>
+        <div class="badge">✦ EAIM 미디어레터</div>
+        <div class="h-title">음악 <em>편지</em> 활동지</div>
+        <div class="h-sub">생활 속에서 찾아 들은 음악 · 작곡가에게 감성과 가치를 전하는 편지</div>
+      </div>
+      <div class="info-grid">
+        <div class="info-row"><label>학년 반</label><input id="i-class" placeholder="  "></div>
+        <div class="info-row"><label>번호</label><input id="i-num" placeholder="  "></div>
+        <div class="info-row"><label>이름</label><input id="i-name" placeholder="  "></div>
+        <div class="info-row"><label>날짜</label><input id="i-date" placeholder="  "></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ai-notice">⚠️ <b>AI 활용 안내</b> — 곡 정보 검색 보조는 허용하되, 편지 본문(감성·가치 서술)은 반드시 학생 본인의 경험과 언어로 작성합니다.</div>
+
+  <!-- STEP 1 기본 정보 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">1</div><div class="st">감상한 음악 기본 정보</div></div>
+    <table class="tbl">
+      <tr><th>곡명</th><td><textarea id="f-song" rows="1" placeholder="감상한 곡 이름"></textarea></td><th style="width:80px;">작곡가</th><td><textarea id="f-composer" rows="1" placeholder="작곡가 이름"></textarea></td></tr>
+      <tr><th>시대·국적</th><td><textarea id="f-era" rows="1" placeholder="예: 19세기 독일, 낭만주의"></textarea></td><th>장르·형식</th><td><textarea id="f-genre" rows="1" placeholder="예: 교향곡, 피아노 소나타"></textarea></td></tr>
+      <tr><th>어디서 들었나</th><td colspan="3"><textarea id="f-where" rows="1" placeholder="어떤 상황에서 이 음악을 들었나요?"></textarea></td></tr>
+    </table>
+  </div>
+
+  <!-- STEP 2 특징 & 느낌 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">2</div><div class="st">음악 특징 파악 & 나의 느낌 (편지에 반영할 내용)</div></div>
+    <div class="rubric">
+      <div class="rubric-title">채점 기준 미리 확인</div>
+      <div class="rr"><span class="rs">40점</span><span class="rd"><b>음악적 특징을 구체적으로</b> 파악하여 편지에 반영 / 감성과 가치를 자신의 경험과 연결 지어 서술</span></div>
+      <div class="rr"><span class="rs">20점</span><span class="rd">음악적 가치를 존중하는 태도가 <b>구체적 근거와 함께</b> 드러남</span></div>
+    </div>
+    <div class="two">
+      <div class="box"><div class="box-title">🎵 음악적 특징 (리듬·가락·음색·형식 등)</div><textarea id="f-char" placeholder="이 음악의 음악적 특징을 구체적으로 써보세요."></textarea></div>
+      <div class="box"><div class="box-title">💡 나의 경험과 연결되는 장면</div><textarea id="f-exp" placeholder="이 음악을 듣고 어떤 경험·기억이 떠올랐나요?"></textarea></div>
+      <div class="box"><div class="box-title">💫 이 음악이 지닌 가치</div><textarea id="f-value" placeholder="이 음악이 우리에게 어떤 가치를 주나요?"></textarea></div>
+      <div class="box"><div class="box-title">🌐 서로 다른 음악적 가치 존중</div><textarea id="f-respect" placeholder="다른 사람의 음악적 취향이나 가치를 어떻게 존중할 수 있을까요?"></textarea></div>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- STEP 3 편지 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">3</div><div class="st">작곡가에게 편지 쓰기</div></div>
+    <div class="sdesc">감상하며 느낀 것, 전하고 싶은 것을 작곡가에게 직접 편지로 써보세요.</div>
+    <div class="letter-paper">
+      <div class="letter-stamp">✉</div>
+      <div class="letter-to">To. <input id="l-to" placeholder="작곡가 이름"> 선생님께</div>
+      <textarea id="l-body" class="letter-body" placeholder="편지를 써보세요.&#10;&#10;음악적 특징을 구체적으로 언급하고, 나의 경험과 연결하며, 이 음악이 지닌 가치와 서로 다른 음악적 가치를 존중하는 마음을 담아보세요."></textarea>
+      <div class="letter-from">
+        From. <input id="l-from" style="width:80px;" placeholder="이름">
+        &nbsp; <input id="l-year" style="width:34px;" placeholder="년">년
+        <input id="l-month" style="width:24px;" placeholder="월">월
+        <input id="l-day" style="width:24px;" placeholder="일">일
+      </div>
+      <div class="check-box">
+        <div class="check-title">✅ 제출 전 자기 점검</div>
+        <div class="checks">
+          <div class="check-row"><div class="chk" id="c1" onclick="toggleCheck('c1')"></div><span>이 음악의 특징(리듬·가락·음색 등)이 편지에 구체적으로 드러났나요?</span></div>
+          <div class="check-row"><div class="chk" id="c2" onclick="toggleCheck('c2')"></div><span>나의 경험과 연결 지은 내용이 들어갔나요?</span></div>
+          <div class="check-row"><div class="chk" id="c3" onclick="toggleCheck('c3')"></div><span>이 음악이 지닌 가치를 근거 들어 서술했나요?</span></div>
+          <div class="check-row"><div class="chk" id="c4" onclick="toggleCheck('c4')"></div><span>서로 다른 음악적 가치를 존중하는 태도가 드러났나요?</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 성찰 -->
+  <div class="sec" style="margin-bottom:0;">
+    <div class="sec-head"><div class="sn">4</div><div class="st">오늘 나의 성찰</div></div>
+    <div class="reflect">
+      <div class="rb"><div class="ri">🔍</div><div class="rq">새로 알게 된 것</div><textarea id="r1" placeholder="써보세요"></textarea></div>
+      <div class="rb"><div class="ri">💬</div><div class="rq">편지를 쓰면서 가장 어려웠던 점</div><textarea id="r2" placeholder="써보세요"></textarea></div>
+      <div class="rb"><div class="ri">⭐</div><div class="rq">나의 음악 가치관 한 문장</div><textarea id="r3" placeholder="써보세요"></textarea></div>
+    </div>
+  </div>
+
+  <div class="btn-bar">
+    <button class="btn btn-save" onclick="saveData()">💾 저장하기</button>
+    <button class="btn btn-print" onclick="window.print()">🖨 인쇄 / PDF</button>
+    <button class="btn btn-clear" onclick="clearData()">🗑 초기화</button>
+    <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
+  </div>
+
+  <div class="footer">
+    <span><b style="color:var(--teal);">EAIM</b> 미디어레터 · 음악편지 활동지</span>
+    <span>Emotion · Artscape · Interactive · Musicalization</span>
+  </div>
+</div>
+
+<script>
+const KEY='eaim_letter_v1';
+const IDS=['i-class','i-num','i-name','i-date','f-song','f-composer','f-era','f-genre','f-where','f-char','f-exp','f-value','f-respect','l-to','l-body','l-from','l-year','l-month','l-day','r1','r2','r3'];
+const CHECKS=['c1','c2','c3','c4'];
+
+function toggleCheck(id){
+  const el=document.getElementById(id);
+  el.classList.toggle('on');
+  if(el.classList.contains('on'))el.textContent='✓';
+  else el.textContent='';
+  saveData();
+}
+
+function saveData(){
+  try{
+    const d={};
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el)d[id]=el.value;});
+    const checks={};
+    CHECKS.forEach(id=>{checks[id]=document.getElementById(id).classList.contains('on');});
+    d['_checks']=checks;
+    localStorage.setItem(KEY,JSON.stringify(d));
+    const msg=document.getElementById('save-msg');
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'),2000);
+  }catch(e){}
+}
+
+function loadData(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el&&d[id]!==undefined)el.value=d[id];});
+    if(d['_checks']){
+      CHECKS.forEach(id=>{
+        if(d['_checks'][id]){
+          const el=document.getElementById(id);
+          el.classList.add('on');el.textContent='✓';
+        }
+      });
+    }
+  }catch(e){}
+}
+
+function clearData(){
+  if(!confirm('모든 내용을 지울까요?'))return;
+  try{localStorage.removeItem(KEY);}catch(e){}
+  IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  CHECKS.forEach(id=>{const el=document.getElementById(id);el.classList.remove('on');el.textContent='';});
+}
+
+let timer;
+document.querySelectorAll('input,textarea').forEach(el=>{
+  el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(saveData,1500);});
+});
+loadData();
+</script>
+</body>
+</html>

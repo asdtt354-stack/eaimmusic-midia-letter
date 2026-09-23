@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>음악신문 활동지 — EAIM 미디어레터</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0d1a;--purple:#6a2fe0;--teal:#00738a;--rose:#c8185e;--paper:#fdfbf6;--newsprint:#f5f3ee;--line:#d0cce0;--muted:#6b6080;--lp:#f0ebff;--lt:#e6f5f8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#ddd9ee;padding:16px;color:var(--ink);}
+.page{background:var(--paper);max-width:780px;margin:0 auto;padding:28px 32px;border-radius:4px;box-shadow:0 4px 32px rgba(80,60,120,.15);}
+/* 마스트헤드 */
+.mast{border-top:5px solid var(--ink);border-bottom:3px solid var(--ink);padding:8px 0;margin-bottom:14px;}
+.mast-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px;}
+.mast-badge{font-size:10px;background:var(--purple);color:#fff;padding:2px 8px;border-radius:2px;letter-spacing:2px;font-weight:700;}
+.mast-meta{font-size:10.5px;color:var(--muted);font-family:'Noto Serif KR',serif;}
+.mast-name{font-family:'Black Han Sans',sans-serif;font-size:40px;text-align:center;color:var(--ink);line-height:1;}
+.mast-name em{color:var(--purple);font-style:normal;}
+.mast-sub{text-align:center;font-size:11px;color:var(--muted);font-family:'Noto Serif KR',serif;margin-top:3px;}
+.mast-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:7px;}
+.info-row{display:flex;gap:14px;}
+.info-row .ir{font-size:11px;display:flex;align-items:center;gap:5px;}
+.info-row .ir label{color:var(--muted);}
+.info-row .ir input{border:none;border-bottom:1px solid var(--ink);background:transparent;font-size:11px;min-width:60px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);}
+.mast-note{font-size:10.5px;color:var(--muted);font-family:'Noto Serif KR',serif;}
+.ai-notice{background:#fff8e1;border:1px solid #f9a825;border-radius:5px;padding:6px 10px;font-size:11px;color:#795548;margin-bottom:12px;}
+/* 헤드라인 */
+.headline{border:1.5px solid var(--line);border-radius:5px;padding:9px 12px;background:#fff;margin-bottom:12px;}
+.hl-eye{font-size:10px;letter-spacing:3px;color:var(--rose);font-weight:700;margin-bottom:4px;}
+.hl-title textarea{width:100%;border:none;resize:none;font-family:'Noto Serif KR',serif;font-size:17px;font-weight:700;color:var(--ink);background:transparent;outline:none;min-height:28px;}
+.hl-meta{display:flex;gap:12px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
+.hl-meta .hm{display:flex;align-items:center;gap:4px;}
+.hl-meta input{border:none;border-bottom:1px solid #ccc;min-width:80px;background:transparent;font-size:11px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);}
+/* 섹션 */
+.sec{margin-bottom:16px;}
+.sec-head{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.sn{width:24px;height:24px;border-radius:50%;background:var(--purple);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sn.t{background:var(--teal);}
+.st{font-size:13.5px;font-weight:800;}
+.st span{font-size:11px;font-weight:400;color:var(--muted);}
+/* 루브릭 */
+.rub{border-radius:6px;padding:7px 11px;margin-bottom:9px;font-size:11px;}
+.rub.p{background:var(--lp);border:1px solid rgba(106,47,224,.15);}
+.rub.t{background:var(--lt);border:1px solid rgba(0,115,138,.15);}
+.rub-title{font-weight:700;margin-bottom:5px;}
+.rub.p .rub-title{color:var(--purple);}
+.rub.t .rub-title{color:var(--teal);}
+.rr{display:flex;gap:8px;margin-bottom:3px;align-items:flex-start;}
+.rs{font-weight:900;min-width:30px;}
+.rub.p .rs{color:var(--purple);}
+.rub.t .rs{color:var(--teal);}
+.rd{color:var(--muted);line-height:1.5;flex:1;}
+/* 그리드 */
+.two{display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:10px;}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+.box{border:1.5px solid var(--line);border-radius:6px;padding:10px 12px;background:#fff;}
+.box-label{font-size:10px;letter-spacing:2px;font-weight:700;border-bottom:2px solid var(--purple);color:var(--purple);padding-bottom:3px;display:inline-block;margin-bottom:7px;}
+.box-label.t{border-color:var(--teal);color:var(--teal);}
+.box-label.r{border-color:var(--rose);color:var(--rose);}
+.box-label.i{border-color:var(--ink);color:var(--ink);}
+.box textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:11.5px;color:var(--ink);background:transparent;outline:none;min-height:52px;line-height:1.75;}
+.el-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.el-card{border:1px solid var(--line);border-radius:5px;padding:7px 9px;background:#fff;}
+.el-title{font-size:10.5px;font-weight:700;color:var(--purple);margin-bottom:4px;}
+.el-card textarea{width:100%;border:none;resize:none;font-family:'Noto Sans KR',sans-serif;font-size:11.5px;color:var(--ink);background:transparent;outline:none;min-height:48px;line-height:1.7;}
+.img-ph{background:var(--newsprint);border:1.5px dashed var(--line);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b0a8c8;font-size:11px;text-align:center;padding:10px;}
+.img-cap input{width:100%;border:none;border-bottom:1px solid var(--line);font-size:10.5px;color:var(--muted);background:transparent;outline:none;margin-top:4px;font-family:'Noto Sans KR',sans-serif;}
+.profile-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.profile-tbl th{background:var(--newsprint);color:var(--muted);font-weight:700;padding:4px 7px;border:1px solid var(--line);width:62px;font-size:10.5px;}
+.profile-tbl td{padding:4px 7px;border:1px solid var(--line);}
+.profile-tbl input{width:100%;border:none;background:transparent;font-size:11px;color:var(--ink);outline:none;font-family:'Noto Sans KR',sans-serif;}
+.div{height:1px;background:linear-gradient(90deg,var(--purple),var(--teal),transparent);margin:12px 0;opacity:.2;}
+/* 번역코드 */
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.tag{font-size:10.5px;padding:2px 7px;border-radius:10px;background:var(--lt);color:var(--teal);font-weight:600;cursor:pointer;user-select:none;transition:all .15s;}
+.tag.on{background:var(--teal);color:#fff;}
+.my-input{width:100%;border:none;border-bottom:1px solid #ccc;font-size:11px;padding:2px 2px;color:var(--ink);background:transparent;font-family:'Noto Sans KR',sans-serif;outline:none;}
+/* 버튼 */
+.btn-bar{display:flex;gap:10px;justify-content:center;margin:16px 0;flex-wrap:wrap;}
+.btn{padding:9px 22px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.btn-save{background:var(--purple);color:#fff;}
+.btn-print{background:var(--teal);color:#fff;}
+.btn-clear{background:var(--lp);color:var(--purple);border:1.5px solid var(--purple);}
+.save-msg{font-size:12px;color:var(--teal);font-weight:700;opacity:0;transition:opacity .3s;}
+.save-msg.show{opacity:1;}
+.footer{border-top:2px solid var(--line);margin-top:12px;padding-top:7px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'Noto Serif KR',serif;}
+@media print{body{background:#fff;padding:0;}.page{box-shadow:none;padding:18px 24px;}.btn-bar{display:none;}@page{margin:8mm;size:A4}}
+@media(max-width:600px){.two{grid-template-columns:1fr;}.three{grid-template-columns:1fr;}.el-grid{grid-template-columns:1fr;}.info-row{flex-wrap:wrap;}}
+</style>
+</head>
+<body>
+<a href="index.html" class="back-link" style="display:inline-block;margin:10px 0 0 10px;color:#7aa7ff;text-decoration:none;font-size:14px">← 활동지 목록</a>
+<style>@media print{.back-link{display:none !important}}</style>
+<div class="page">
+
+  <!-- 마스트헤드 -->
+  <div class="mast">
+    <div class="mast-top">
+      <span class="mast-meta">Emotion · Artscape · Interactive · Musicalization</span>
+      <span class="mast-badge">EAIM 미디어레터</span>
+    </div>
+    <div class="mast-name"><em>음</em>악신문</div>
+    <div class="mast-sub">다양한 시대·문화권의 음악을 듣고 분석하며, 배경과 역할을 비교하여 신문으로 만든다</div>
+    <div class="mast-bottom">
+      <div class="info-row">
+        <div class="ir"><label>학년 반</label><input id="i-class" placeholder="   "></div>
+        <div class="ir"><label>번호</label><input id="i-num" placeholder="  "></div>
+        <div class="ir"><label>이름</label><input id="i-name" placeholder="   "></div>
+        <div class="ir"><label>날짜</label><input id="i-date" placeholder="       "></div>
+      </div>
+      <div class="mast-note">제 <input id="i-edition" style="border:none;border-bottom:1px solid var(--ink);width:28px;background:transparent;font-size:10.5px;outline:none;text-align:center;"> 호</div>
+    </div>
+  </div>
+
+  <div class="ai-notice">⚠️ <b>AI 활용 안내</b> — AI 이미지 생성은 허용하되, 기사 내용(음악 요소 분석·배경 비교)은 반드시 학생 본인이 직접 서술합니다.</div>
+
+  <!-- 헤드라인 -->
+  <div class="headline">
+    <div class="hl-eye">오늘의 특집 음악</div>
+    <textarea id="f-headline" class="hl-title" style="font-size:17px;" rows="1" placeholder="신문 제목을 써보세요"></textarea>
+    <div class="hl-meta">
+      <div class="hm">작곡가 <input id="f-composer" placeholder="이름"></div>
+      <div class="hm">시대 <input id="f-era" placeholder="예: 19세기"></div>
+      <div class="hm">문화권·지역 <input id="f-region" placeholder="예: 독일, 서유럽"></div>
+      <div class="hm">장르 <input id="f-genre" placeholder="예: 교향곡"></div>
+    </div>
+  </div>
+
+  <!-- STEP 1 음악 요소 분석 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">1</div><div class="st">음악 요소 분석 <span>— 50점</span></div></div>
+    <div class="rub p">
+      <div class="rub-title">채점 기준</div>
+      <div class="rr"><span class="rs">50점</span><span class="rd">음악 요소(리듬, 가락, 셈여림, 형식 등)를 <b>근거와 함께 정확하게</b> 분석하여 제시함</span></div>
+      <div class="rr"><span class="rs">40점</span><span class="rd">음악 요소를 분석하여 제시함</span></div>
+      <div class="rr"><span class="rs">30점</span><span class="rd">음악 요소를 1가지만 제시함</span></div>
+    </div>
+    <div class="two">
+      <div>
+        <div class="el-grid">
+          <div class="el-card"><div class="el-title">🥁 리듬</div><textarea id="f-rhythm" placeholder="이 음악의 리듬 특징은?"></textarea></div>
+          <div class="el-card"><div class="el-title">🎵 가락 (선율)</div><textarea id="f-melody" placeholder="가락의 특징은?"></textarea></div>
+          <div class="el-card"><div class="el-title">🔊 셈여림</div><textarea id="f-dynamic" placeholder="셈여림 변화는?"></textarea></div>
+          <div class="el-card"><div class="el-title">📐 형식·구성</div><textarea id="f-form" placeholder="음악의 형식은?"></textarea></div>
+        </div>
+        <div class="box"><div class="box-label i">요소 종합 분석 기사 (근거 포함)</div><textarea id="f-analysis" placeholder="음악 요소를 종합하여 기사 형식으로 써보세요. 근거(실제로 들리는 소리의 특징)를 포함하세요." style="min-height:56px;"></textarea></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="box" style="flex:1;">
+          <div class="box-label t">AI 이미지</div>
+          <div class="img-ph" style="min-height:90px;"><div style="font-size:22px;margin-bottom:4px;">🎨</div><div style="font-size:10.5px;">번역코드로 생성한<br>AI 이미지를 붙이세요</div></div>
+          <div class="img-cap"><input id="f-img-cap" placeholder="이미지 캡션"></div>
+        </div>
+        <div class="box">
+          <div class="box-label i">감상 곡명</div>
+          <textarea id="f-songname" style="min-height:28px;" placeholder="곡 이름을 쓰세요"></textarea>
+        </div>
+        <div class="box">
+          <div class="box-label i">악기 편성</div>
+          <textarea id="f-instrument" style="min-height:28px;" placeholder="이 음악의 악기 구성"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- STEP 2 시대·배경 비교 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn t">2</div><div class="st">시대·사회·문화적 배경과 역할 비교 <span>— 50점</span></div></div>
+    <div class="rub t">
+      <div class="rub-title">채점 기준</div>
+      <div class="rr"><span class="rs">50점</span><span class="rd">서로 다른 시대·사회·문화권 음악의 배경과 역할을 <b>근거를 들어 정확하게 비교</b>하여 기사로 구성함</span></div>
+      <div class="rr"><span class="rs">40점</span><span class="rd">음악의 배경과 역할을 비교하여 기사로 구성함</span></div>
+      <div class="rr"><span class="rs">30점</span><span class="rd">배경과 역할 중 1가지만 언급함</span></div>
+    </div>
+    <div class="three">
+      <div class="box">
+        <div class="box-label">비교 음악 A</div>
+        <div style="font-size:11px;font-weight:700;margin-bottom:5px;border-bottom:1px solid var(--line);padding-bottom:4px;">곡명 <input id="b-a-song" style="border:none;border-bottom:1px solid #ccc;min-width:80px;background:transparent;font-size:11px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);" placeholder=""></div>
+        <div style="font-size:10.5px;color:var(--muted);margin-bottom:3px;">시대·문화권</div>
+        <textarea id="b-a-era" style="min-height:28px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">사회적 배경</div>
+        <textarea id="b-a-bg" style="min-height:40px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">음악의 역할</div>
+        <textarea id="b-a-role" style="min-height:40px;" placeholder=""></textarea>
+      </div>
+      <div class="box">
+        <div class="box-label t">비교 음악 B</div>
+        <div style="font-size:11px;font-weight:700;margin-bottom:5px;border-bottom:1px solid var(--line);padding-bottom:4px;">곡명 <input id="b-b-song" style="border:none;border-bottom:1px solid #ccc;min-width:80px;background:transparent;font-size:11px;outline:none;font-family:'Noto Sans KR',sans-serif;color:var(--ink);" placeholder=""></div>
+        <div style="font-size:10.5px;color:var(--muted);margin-bottom:3px;">시대·문화권</div>
+        <textarea id="b-b-era" style="min-height:28px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">사회적 배경</div>
+        <textarea id="b-b-bg" style="min-height:40px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">음악의 역할</div>
+        <textarea id="b-b-role" style="min-height:40px;" placeholder=""></textarea>
+      </div>
+      <div class="box">
+        <div class="box-label r">두 음악 비교</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-bottom:3px;">공통점</div>
+        <textarea id="b-common" style="min-height:40px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">차이점</div>
+        <textarea id="b-diff" style="min-height:40px;" placeholder=""></textarea>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:3px;">역할 비교</div>
+        <textarea id="b-role-comp" style="min-height:40px;" placeholder=""></textarea>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-label i">비교 기사 본문 — 두 음악의 배경과 역할을 근거를 들어 비교하여 기사로 쓰기</div>
+      <textarea id="b-article" style="min-height:72px;" placeholder="두 음악이 탄생한 시대·사회·문화적 배경과 역할을 근거를 들어 비교하는 기사를 써보세요."></textarea>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- 번역코드 + AI 이미지 -->
+  <div class="sec">
+    <div class="sec-head"><div class="sn">3</div><div class="st">번역코드 &amp; 느낌</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="box"><div style="font-size:10.5px;font-weight:700;color:var(--teal);margin-bottom:6px;">🎨 색채·분위기</div>
+        <div class="tags" id="tg1"><span class="tag" data-g="1">흐릿한</span><span class="tag" data-g="1">선명한</span><span class="tag" data-g="1">어두운</span><span class="tag" data-g="1">투명한</span><span class="tag" data-g="1">몽환적인</span><span class="tag" data-g="1">따뜻한</span></div>
+        <input class="my-input" id="my1" placeholder="나만의 단어 →">
+      </div>
+      <div class="box"><div style="font-size:10.5px;font-weight:700;color:var(--teal);margin-bottom:6px;">💫 에너지·움직임</div>
+        <div class="tags" id="tg2"><span class="tag" data-g="2">폭발적인</span><span class="tag" data-g="2">고요한</span><span class="tag" data-g="2">날카로운</span><span class="tag" data-g="2">부드러운</span><span class="tag" data-g="2">불안한</span><span class="tag" data-g="2">당당한</span></div>
+        <input class="my-input" id="my2" placeholder="나만의 단어 →">
+      </div>
+      <div class="box"><div style="font-size:10.5px;font-weight:700;color:var(--teal);margin-bottom:6px;">🌊 소리의 흐름</div>
+        <div class="tags" id="tg3"><span class="tag" data-g="3">물결치는</span><span class="tag" data-g="3">끊어지는</span><span class="tag" data-g="3">쌓이는</span><span class="tag" data-g="3">반복되는</span><span class="tag" data-g="3">확장되는</span><span class="tag" data-g="3">사라지는</span></div>
+        <input class="my-input" id="my3" placeholder="나만의 단어 →">
+      </div>
+    </div>
+  </div>
+
+  <!-- 자기 점검 -->
+  <div style="background:var(--lp);border:1px solid rgba(106,47,224,.2);border-radius:6px;padding:9px 13px;margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:7px;">✅ 제출 전 자기 점검</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">
+      <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;"><input type="checkbox"> 음악 요소(리듬·가락·셈여림·형식)를 모두 분석했나요?</label>
+      <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;"><input type="checkbox"> 분석에 근거(들리는 소리의 특징)를 함께 썼나요?</label>
+      <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;"><input type="checkbox"> 두 음악의 시대·문화적 배경을 모두 조사했나요?</label>
+      <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;"><input type="checkbox"> 비교 기사에 공통점·차이점·역할이 모두 들어갔나요?</label>
+    </div>
+  </div>
+
+  <div class="btn-bar">
+    <button class="btn btn-save" onclick="saveData()">💾 저장하기</button>
+    <button class="btn btn-print" onclick="window.print()">🖨 인쇄 / PDF</button>
+    <button class="btn btn-clear" onclick="clearData()">🗑 초기화</button>
+    <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
+  </div>
+
+  <div class="footer">
+    <span>EAIM 미디어레터 · 음악신문 활동지</span>
+    <span>Emotion · Artscape · Interactive · Musicalization</span>
+  </div>
+</div>
+
+<script>
+const KEY='eaim_newspaper_v1';
+const IDS=['i-class','i-num','i-name','i-date','i-edition','f-headline','f-composer','f-era','f-region','f-genre','f-rhythm','f-melody','f-dynamic','f-form','f-analysis','f-img-cap','f-songname','f-instrument','b-a-song','b-a-era','b-a-bg','b-a-role','b-b-song','b-b-era','b-b-bg','b-b-role','b-common','b-diff','b-role-comp','b-article','my1','my2','my3'];
+
+function saveData(){
+  try{
+    const d={};
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el)d[id]=el.value;});
+    const sel=[];
+    document.querySelectorAll('.tag.on').forEach(t=>sel.push(t.textContent));
+    d['_tags']=sel;
+    localStorage.setItem(KEY,JSON.stringify(d));
+    const msg=document.getElementById('save-msg');
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'),2000);
+  }catch(e){}
+}
+
+function loadData(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    IDS.forEach(id=>{const el=document.getElementById(id);if(el&&d[id]!==undefined)el.value=d[id];});
+    if(d['_tags']){
+      document.querySelectorAll('.tag').forEach(t=>{if(d['_tags'].includes(t.textContent))t.classList.add('on');});
+    }
+  }catch(e){}
+}
+
+function clearData(){
+  if(!confirm('모든 내용을 지울까요?'))return;
+  try{localStorage.removeItem(KEY);}catch(e){}
+  IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.tag.on').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+}
+
+document.querySelectorAll('.tag').forEach(t=>{
+  t.addEventListener('click',()=>{t.classList.toggle('on');saveData();});
+});
+
+let timer;
+document.querySelectorAll('input:not([type=checkbox]),textarea').forEach(el=>{
+  el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(saveData,1500);});
+});
+
+loadData();
+</script>
+</body>
+</html>
