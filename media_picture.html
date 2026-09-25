@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!-- EAIM 미디어픽쳐 media_picture.html v3.0 (2026-09-25) — 뮤지컬메이커·미디어레터 공용 한 벌 (음악 부록 2-8)
+     · 뮤지컬메이커 사본(AI 중계 api/ai, 시트 이름 칸 = 학생 번호)을 바탕으로
+     · 미디어레터 사본의 📄 활동지 버튼(worksheet/index.html)을 합침 — 활동지 폴더가 없는 저장소에서는 버튼이 저절로 숨음
+     · 슬라이드쇼에 종류 값 kind=picture 를 넘김(slideshow.html v2.0) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -593,7 +597,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <button class="btn btn-primary" id="btn-open-newspaper" onclick="openNewspaper()" style="background:#C9A84C;color:#1a1a1a" disabled>📰 음악 신문 만들기</button>
       <button class="btn btn-primary" id="btn-open-letter" onclick="openLetter()" style="background:#E94560" disabled>💌 음악 편지 쓰기</button>
       <button class="btn btn-primary" id="btn-open-interview" onclick="openInterview()" style="background:#7C4DFF" disabled>🎤 음악 인터뷰</button>
-      <button class="btn btn-primary" id="btn-open-worksheet" onclick="openWorksheets()" style="background:#2E7D8F">📄 활동지 (쓰기 · 인쇄)</button>
+      <button class="btn btn-primary worksheet-btn" id="btn-open-worksheet" onclick="openWorksheets()" style="background:#2E7D8F;display:none">📄 활동지 (쓰기 · 인쇄)</button>
       <button class="btn btn-secondary" onclick="clearScenes()">🗑 전체 초기화</button>
     </div>
   </div>
@@ -800,7 +804,7 @@ let dashRooms=[], dashStudents=[], expandedRoomId=null;
 let unsubSettings=null, unsubScenes=null, unsubStudents=null, unsubRooms=null, unsubRoom=null, unsubNewspaper=null, unsubLetter=null, unsubInterview=null;
 
 // GEMINI_KEY / SHEET_URL는 settings와 동기화되는 미러 변수 (기존 함수들이 그대로 참조)
-let GEMINI_KEY = '';
+Object.defineProperty(window,'GEMINI_KEY',{get:()=>aiAvailable()?'relay':'',set(){/* 키는 서버에만 (2026-09-17) */}});
 let SHEET_URL = '';
 
 let STUDENT_NUMBER = '';
@@ -895,14 +899,12 @@ function subscribeSettings(uid, cb){
   if(unsubSettings) unsubSettings();
   unsubSettings = settingsDocRef(uid).onSnapshot(snap=>{
     settings = snap.exists ? snap.data() : {apiKey:'', sheetUrl:''};
-    GEMINI_KEY = settings.apiKey || '';
     SHEET_URL = settings.sheetUrl || '';
     cb && cb();
   }, err=>{ console.warn('설정 동기화 오류', err); cb && cb(); });
 }
 function setSettings(uid, fields){
   settings = {...settings, ...fields};
-  GEMINI_KEY = settings.apiKey || '';
   SHEET_URL = settings.sheetUrl || '';
   settingsDocRef(uid).set(fields,{merge:true}).catch(e=>showToast('❌ 저장 실패: '+e.message));
 }
@@ -1096,7 +1098,8 @@ function renderDashContent(){
       <div style="font-size:.8rem;color:var(--text)">${currentUser?.displayName||''} · ${currentUser?.email||''}</div>
     </div>
     <div class="dash-card"><div class="dash-card-title">🔑 Gemini API 키</div>
-      <input class="dash-input" type="password" id="apiKeyInput" value="${settings.apiKey||''}" placeholder="AIzaSy... (학생에게 노출되지 않아요)" oninput="saveApiKeyDash(this.value)">
+      <p style="font-size:.75rem;color:var(--sub,#94a3b8);line-height:1.7;margin-bottom:8px">AI는 <b>서버(api/ai)</b>가 선생님 키를 대신 씁니다. 학생 기기로 키가 내려가지 않아요. 키에는 <b>웹사이트 제한을 걸지 마세요</b> — 서버에서 막힙니다. (2026-09-17)</p>
+      <input class="dash-input" type="password" id="apiKeyInput" value="${settings.apiKey||''}" placeholder="AIzaSy..." oninput="saveApiKeyDash(this.value)">
       ${settings.apiKey?`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#4CAF82;margin-top:6px"><span class="api-dot dot-on"></span>API 키 저장됨</div>`:''}
       <div style="font-size:.7rem;color:var(--text2);margin-top:8px">모든 반이 이 키를 함께 써요 (반마다 따로 입력할 필요 없어요)</div>
     </div>
@@ -1162,7 +1165,7 @@ function renderDashContent(){
         </label>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="toggleRoomExpand('${r.id}')">${isOpen?'▲ 접기':'👥 학생현황 · 초대 QR'}</button>
-          <button class="btn btn-secondary" onclick="openWorksheets()">📄 활동지</button>
+          <button class="btn btn-secondary worksheet-btn" onclick="openWorksheets()" style="display:${WORKSHEET_OK?'':'none'}">📄 활동지</button>
           <button class="btn btn-secondary" style="background:rgba(255,107,157,.12);color:var(--accent2)" onclick="deleteRoomUI('${r.id}')">🗑️ 삭제</button>
         </div>
         ${isOpen ? `
@@ -1274,7 +1277,7 @@ function closeStudentView(){ document.getElementById('student-view-modal').style
 
 function renderStudentView({ scenes, npScenes = [], newspaper, letter, interview, room, studentData, rId, studentId }){
   const scope = room.shareScope || 'room';
-  let slideshowUrl = `slideshow.html?mode=teacher&teacher=${teacherUid}&room=${rId}&v=${Date.now()}`;
+  let slideshowUrl = `slideshow.html?mode=teacher&kind=picture&teacher=${teacherUid}&room=${rId}&v=${Date.now()}`;
   let scopeNote = '';
   if (scope === 'individual') { slideshowUrl += `&student=${studentId}`; }
   else if (scope === 'group') {
@@ -1334,7 +1337,7 @@ function renderStudentView({ scenes, npScenes = [], newspaper, letter, interview
 }
 
 async function openStudentReport(rId, studentId){
-  if(!GEMINI_KEY){ showToast('⚠️ 먼저 설정 탭에서 API 키를 입력해주세요'); return; }
+  if(!GEMINI_KEY){ showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
   reportContext = { studentId, roomId: rId };
   document.getElementById('report-student-label').textContent = studentId+'번';
   document.getElementById('report-textarea').value = '생성 중...';
@@ -1374,7 +1377,7 @@ async function regenerateReport(){
 
     if(!fullContext){ ta.value = '아직 이 학생의 활동 기록이 없어요.'; return; }
 
-    const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetchGeminiWithRetry('api/ai#text', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         contents:[{ parts:[{ text:
@@ -1490,7 +1493,9 @@ function logToSheet(activity, title, detail, note){
     fetch(url, {
       method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
-        name: document.getElementById('scene-characters')?.value.trim() || (STUDENT_NUMBER? STUDENT_NUMBER+'번' : ''),
+        // 이름 칸에는 학생 번호만 (예전엔 장면의 '등장인물' 칸이 들어가 학생별로 묶이지 않았음 — 2026-09-21 수정)
+        // 등장인물은 '장면추가'의 상세 칸에 이미 함께 기록됩니다
+        name: STUDENT_NUMBER ? (/번$/.test(String(STUDENT_NUMBER).trim()) ? String(STUDENT_NUMBER).trim() : String(STUDENT_NUMBER).trim()+'번') : '번호 없음',
         group: currentRoom?.name || '', app: '뮤직미디어레터', activity, title: title || '', detail: detail || '', note: note || ''
       })
     });
@@ -1503,7 +1508,7 @@ function logToSheet(activity, title, detail, note){
 async function generateActivityNoteAI(context){
   if(!GEMINI_KEY || !context) return '';
   try{
-    const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetchGeminiWithRetry('api/ai#text', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ contents:[{ parts:[{ text:
         `다음은 중학생의 음악 감상·창작 활동 기록입니다. 이 내용을 바탕으로 학교생활기록부 교과세부능력특기사항(세특)에 쓸 수 있는 관찰 기반 문장을 정확히 1문장, 70자 이내로 작성해주세요.\n` +
@@ -1672,11 +1677,22 @@ function updateSunoCount() {
 // ══════════════════════════
 // 일시적 실패(과부하·요청 한도 초과 등) 시 자동으로 한 번 더 시도
 // ══════════════════════════
+/* AI 중계: 키를 브라우저에 두지 않고 서버 함수(api/ai)로 부릅니다. 주소의 #뒤가 모델 별칭 (2026-09-17) */
+function aiParams(){ const q=new URLSearchParams(location.search); return { teacher:(typeof teacherUid!=='undefined'&&teacherUid)||q.get('teacher')||'', demo:q.get('demo')||'' }; }
+function aiAvailable(){ const p=aiParams(); return !!(p.teacher||p.demo); }
+async function aiFetch(url, options){
+  const model=(String(url).split('#')[1])||'text';
+  const p=aiParams();
+  if(!p.teacher&&!p.demo) return new Response(JSON.stringify({error:{code:403,message:'선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요.'}}),{status:403,headers:{'Content-Type':'application/json'}});
+  let body={}; try{ body=JSON.parse((options&&options.body)||'{}'); }catch{}
+  return fetch('api/ai',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({teacher:p.teacher,demo:p.demo,model,contents:body.contents,generationConfig:body.generationConfig})});
+}
 async function fetchGeminiWithRetry(url, options, maxRetries = 2) {
   let lastErr = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(url, options);
+      const res = await aiFetch(url, options);
       if (res.ok) return res;
       // 429(요청 한도 초과), 500/503(일시적 서버 오류)은 재시도할 가치가 있음
       if ([429, 500, 502, 503].includes(res.status) && attempt < maxRetries) {
@@ -1698,7 +1714,7 @@ async function fetchGeminiWithRetry(url, options, maxRetries = 2) {
 }
 
 async function generateSunoPrompt() {
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
 
   const btn = document.getElementById('btn-gen-suno');
   btn.disabled = true; btn.textContent = '생성 중...';
@@ -1727,7 +1743,7 @@ async function generateSunoPrompt() {
   }
 
   try {
-    const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetchGeminiWithRetry('api/ai#text', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         contents:[{ parts:[{ text:
@@ -1773,7 +1789,7 @@ function copySunoPrompt() {
 }
 
 async function generateMusicDescription() {
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
 
   const btn = document.getElementById('btn-gen-desc');
   btn.disabled = true; btn.textContent = '생성 중...';
@@ -1781,7 +1797,7 @@ async function generateMusicDescription() {
   try {
     let text = '';
     if (currentAudioBase64) {
-      const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+      const res = await fetchGeminiWithRetry('api/ai#text', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           contents:[{ parts:[
@@ -1797,7 +1813,7 @@ async function generateMusicDescription() {
       const hint = document.getElementById('yt-search-query').value.trim()
         || document.getElementById('music-url').value.trim()
         || '지금 재생 중인 곡';
-      const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+      const res = await fetchGeminiWithRetry('api/ai#text', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           contents:[{ parts:[{ text: `다음 정보를 바탕으로 이 음악에 대한 중학생용 짧은 설명을 정확히 ${DESC_LIMIT}자 이내 한국어 한두 문장으로 써주세요. 실제로 듣지는 못했으니 장르 이름에서 유추할 수 있는 일반적인 특징 위주로, 단정적이지 않게 써주세요. 설명 없이 문장만 출력하세요.\n\n정보: ${hint}` }] }]
@@ -1927,12 +1943,12 @@ function updateAnalyzeButtonVisibility(show) {
 }
 
 async function analyzeSongForCodeTable() {
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
   if (!currentAudioBase64) { showToast('⚠️ 먼저 음악 파일을 업로드해주세요'); return; }
 
   showLoading('🤖 음악을 듣고 분석하고 있어요...');
   try {
-    const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetchGeminiWithRetry('api/ai#text', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [
@@ -1964,13 +1980,13 @@ JSON 외의 다른 텍스트는 출력하지 마세요.` }
 async function translatePrompt() {
   const kr = document.getElementById('prompt-kr').value.trim();
   if (!kr) { showToast('⚠️ 먼저 한글로 내용을 적어주세요'); return; }
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
 
   const btn = document.getElementById('btn-translate');
   btn.textContent = '번역 중...'; btn.disabled = true;
 
   try {
-    const res = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetchGeminiWithRetry('api/ai#text', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ contents:[{ parts:[{ text: `다음 한글 내용을 이미지 생성 AI용 영어 프롬프트로 변환해주세요. 짧고 명확하게, 쉼표로 구분된 키워드 형태로만 출력하세요. 설명 없이 프롬프트만 출력:\n\n${kr}` }] }] })
     });
@@ -2012,7 +2028,7 @@ function buildFinalPrompt() {
 }
 
 async function generateImage() {
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
 
   const finalPrompt = buildFinalPrompt();
   if (!finalPrompt.includes('cinematic')) { showToast('⚠️ 스타일이나 내용을 먼저 선택해주세요'); return; }
@@ -2021,7 +2037,7 @@ async function generateImage() {
   showLoading('✨ AI가 이미지를 그리고 있어요...');
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`, {
+    const res = await aiFetch('api/ai#image', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         contents:[{ parts:[{ text: finalPrompt }] }],
@@ -2176,6 +2192,7 @@ function saveScenesToStorage() {
   const data = {
     title,
     school: '',
+    kind: 'picture',          // 슬라이드쇼 종류 값 (slideshow.html v2.0)
     scenes: collectedScenes,
   };
   localStorage.setItem(SLIDESHOW_STORAGE_KEY, JSON.stringify(data));
@@ -2287,7 +2304,16 @@ async function clearScenes() {
   showToast('🗑 전체 초기화됐어요');
 }
 
-// 📄 음악 활동지 — 장면이 없어도 언제든 열려요 (쓰기·인쇄 모두 됩니다)
+// 📄 음악 활동지(worksheet/ 폴더) — 장면이 없어도 언제든 열려요 (쓰기·인쇄 모두 됩니다)
+//    활동지 폴더가 없는 저장소(뮤지컬메이커)에서는 버튼을 숨깁니다. 한 파일을 두 저장소가 함께 쓰기 때문.
+let WORKSHEET_OK = false;
+(async () => {
+  try {
+    const r = await fetch('worksheet/index.html', { method: 'HEAD', cache: 'no-store' });
+    WORKSHEET_OK = r.ok;
+  } catch(e) { WORKSHEET_OK = false; }
+  document.querySelectorAll('.worksheet-btn').forEach(b => { b.style.display = WORKSHEET_OK ? '' : 'none'; });
+})();
 function openWorksheets(){
   window.open('worksheet/index.html?v=' + Date.now(), '_blank');
   try{ logToSheet('활동지열기', '음악 활동지', ''); }catch(e){}
@@ -2301,6 +2327,7 @@ function goToSlideshow() {
   if (roomId)     q.push('room='    + encodeURIComponent(roomId));
   if (STUDENT_NUMBER) q.push('student=' + encodeURIComponent(STUDENT_NUMBER));
   if (typeof STUDENT_GROUP !== 'undefined' && STUDENT_GROUP) q.push('group=' + encodeURIComponent(STUDENT_GROUP));
+  q.push('kind=picture');      // 미디어픽쳐 슬라이드쇼 — 커튼콜 없이 끝 카드 (slideshow.html v2.0)
   q.push('v=' + Date.now());   // 휴대폰 브라우저가 예전 슬라이드쇼를 붙잡고 있지 않도록 매번 새로 받기
   location.href = 'slideshow.html?' + q.join('&');
 }
@@ -2726,10 +2753,10 @@ function buildQASection(questions) {
 }
 async function generateInterviewQ() {
   const s = collectedScenes[collectedScenes.length - 1] || {};
-  if (!GEMINI_KEY) { showToast('⚠️ 선생님이 아직 API 키를 설정하지 않았어요'); return; }
+  if (!GEMINI_KEY) { showToast('⚠️ 선생님 초대 링크(QR)로 들어와야 AI를 쓸 수 있어요'); return; }
   showToast('✨ AI가 질문을 생성하고 있어요...');
   try {
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+    const resp = await aiFetch('api/ai#text', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({contents:[{parts:[{text:
         `음악 감상 수업에서 중학생이 다음 장르의 음악을 감상했습니다.\n장르: ${s.title||'(장르 미입력)'}\n감정/분위기: ${[s.emotion, s.musicMood].filter(Boolean).join(', ')||'(미입력)'}\n\n이 학생에게 맞는 음악 감상 인터뷰 질문 6개를 만들어주세요.\n- 음악 요소(리듬, 선율, 화성, 음색)와 연결된 질문 포함\n- 학생의 감정과 경험을 끌어내는 질문\n- 서논술형 평가로 활용 가능한 깊이있는 질문\n- 번호 없이 질문만, 한 줄씩, 총 6개만 출력하세요`
