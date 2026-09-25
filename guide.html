@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!-- EAIM 미디어레터 사용 가이드 guide.html v1 (2026-09-25) — 선생님용 · 학생용 탭. media_picture.html v3.0 · slideshow.html v2.15 기준 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EAIM 미디어레터 사용 가이드</title>
+<style>
+:root{--accent:#5DADE2;--accent2:#ff6b9d;--gold:#FFD54F;--green:#69f0ae;--purple:#ce93d8;--orange:#ffb74d;
+  --dark:#0D1B2A;--panel:#13233a;--panel2:#1a2d47;--border:rgba(255,255,255,.1);--text:#e8eef5;--sub:#9fb3c8}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--dark);color:var(--text);line-height:1.7;word-break:keep-all}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(93,173,226,.10),transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(255,107,157,.07),transparent 60%)}
+.wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:36px 20px 80px}
+.hero{text-align:center;padding:30px 0 22px}
+.hero .emoji{font-size:44px}
+.hero h1{font-size:clamp(24px,4vw,34px);font-weight:900;margin:8px 0 4px}
+.hero .eyebrow{font-size:12px;letter-spacing:4px;color:var(--accent);text-transform:uppercase}
+.hero p{color:var(--sub);font-size:14px;margin-top:6px}
+.tabs{display:flex;gap:8px;justify-content:center;margin:22px 0 28px;position:sticky;top:0;z-index:5;padding:10px 0;background:linear-gradient(var(--dark) 85%,transparent)}
+.tab{padding:10px 22px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--sub);cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
+.tab.on{background:rgba(93,173,226,.15);border-color:var(--accent);color:#fff}
+.page{display:none}.page.on{display:block}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:0 0 26px}
+.flow .step{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px}
+.flow .arr{color:var(--accent);font-size:16px}
+section{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:16px}
+section h2{font-size:18px;font-weight:900;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+section h2 .no{display:inline-flex;width:28px;height:28px;border-radius:50%;background:rgba(93,173,226,.15);border:1px solid var(--accent);color:#fff;font-size:13px;align-items:center;justify-content:center;flex:none}
+section .lead{color:var(--sub);font-size:14px;margin-bottom:12px}
+section ul,section ol{padding-left:20px;font-size:14.5px}
+section li{margin:5px 0}
+section li b{color:#fff}
+.tip{margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(93,173,226,.08);border:1px solid rgba(93,173,226,.25);font-size:13.5px}
+.tip.warn{background:rgba(255,183,77,.08);border-color:rgba(255,183,77,.35)}
+.tip .t{font-weight:800;color:var(--accent);margin-right:6px}
+.tip.warn .t{color:var(--orange)}
+.keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px}
+.key{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;display:flex;gap:10px;align-items:center}
+.key kbd{font-family:inherit;background:#000;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:1px 8px;font-size:12px;color:#fff;flex:none}
+.btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:10px}
+.btnx{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px}
+.btnx b{display:block;color:#fff;font-size:14px;margin-bottom:2px}
+.outs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:10px}
+.out{border-radius:12px;padding:12px 14px;border:1px solid var(--border);font-size:13px;background:var(--panel2)}
+.out b{display:block;font-size:14px;margin-bottom:4px}
+.foot{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+.back{position:fixed;left:16px;top:14px;z-index:6;background:var(--panel);border:1px solid var(--border);color:var(--sub);border-radius:999px;padding:7px 14px;font-size:13px;text-decoration:none}
+@media (max-width:600px){section{padding:18px 16px}.tab{padding:9px 16px;font-size:13px}}
+</style>
+</head>
+<body>
+<a class="back" href="media_picture.html">← 미디어레터</a>
+<div class="wrap">
+  <div class="hero">
+    <div class="emoji">🎵</div>
+    <div class="eyebrow">Music Media Letter · EAIM</div>
+    <h1>미디어레터 사용 가이드</h1>
+    <p>음악을 듣고 → 느낌을 그림으로 번역하고 → 영상·신문·편지로 남기는 음악 감상 수업 도구입니다.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('t')">👩‍🏫 선생님용</button>
+    <button class="tab" onclick="showTab('s')">🎒 학생용</button>
+  </div>
+
+  <!-- ══════════════ 선생님용 ══════════════ -->
+  <div class="page on" id="page-t">
+    <div class="flow">
+      <span class="step">🔑 로그인·반 만들기</span><span class="arr">→</span>
+      <span class="step">📱 초대 링크·QR</span><span class="arr">→</span>
+      <span class="step">🎧 학생 감상·그림</span><span class="arr">→</span>
+      <span class="step">🎬📰💌 결과물</span><span class="arr">→</span>
+      <span class="step">📊 기록·세특</span>
+    </div>
+
+    <section>
+      <h2><span class="no">1</span>수업 준비 — 로그인과 반 만들기</h2>
+      <ol>
+        <li><b>구글 계정으로 로그인</b>합니다. (선생님만. 학생은 로그인 없음)</li>
+        <li><b>⚙️ 설정</b>에서 AI 키를 넣습니다. 모든 반이 이 키를 함께 씁니다. 키는 학생 화면에 보이지 않습니다.</li>
+        <li><b>🏫 반 관리</b>에서 반(방)을 만들고, 수업 때 그 반의 <b>수업 상태를 ON</b>으로 켭니다.</li>
+      </ol>
+      <div class="tip warn"><span class="t">주의</span>반 이름은 띄어쓰기까지 똑같이 써야 같은 반으로 묶입니다. 한 가지 이름으로 정해 두세요.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">2</span>학생 초대와 공유 범위</h2>
+      <ul>
+        <li>반마다 <b>초대 링크</b>와 <b>QR</b>이 따로 만들어집니다. 학생은 이름·번호만 고르면 바로 들어옵니다.</li>
+        <li><b>공유 범위</b>를 반마다 정합니다: <b>👥 반 전체</b>(서로의 장면을 함께 봄) / <b>👪 모둠별</b> / <b>👤 개인별</b>.
+          음악편지·음악인터뷰는 평가에 안전하도록 기본이 항상 개인별입니다.</li>
+        <li><b>👥 학생현황</b>에서 누가 들어와 있는지, 장면을 몇 개 모았는지 바로 보입니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="no">3</span>학생이 하는 일 (한눈에)</h2>
+      <p class="lead">자세한 순서는 🎒 학생용 탭에 있습니다. 화면의 단계 번호 그대로입니다.</p>
+      <ol>
+        <li><b>🎵 음악 감상</b> — 유튜브 링크나 음악 파일로 듣기</li>
+        <li><b>✂️ 구간 나누기 & 음악 설명</b> — 몇 부분으로 나눠 들을지 고르고, AI가 곡을 분석한 설명 읽기</li>
+        <li><b>🗺️ 번역코드표</b> — 음악 요소(빠르기·음색·강약…)를 "무엇이 들리나 / 어떤 장면인가"로 옮겨 보는 표</li>
+        <li><b>🎨 스타일 · 🌈 색감 · 💭 분위기</b> 고르기 → <b>✏️ 자유롭게 표현하기</b>(떠오르는 장면을 글로)</li>
+        <li><b>✨ 이미지 생성</b> → 마음에 들면 <b>➕ 이 장면 모으기</b>. 곡을 두 개 감상하면 곡마다 장면을 모읍니다.</li>
+        <li>결과물: <b>🎬 슬라이드쇼</b>(감상 영상) · <b>📰 음악 신문</b> · <b>💌 음악 편지</b> · <b>🎤 음악 인터뷰</b></li>
+      </ol>
+      <div class="tip"><span class="t">Suno 편곡</span>원곡은 유튜브로 감상하고, 영상에 넣을 음악은 9번 칸의 <b>편곡 프롬프트</b>로 Suno에서 만들어 옵니다(저작권을 피하려는 흐름). 학생이 만든 편곡본을 슬라이드쇼의 🎵 배경 음악 칸에 올리면 됩니다.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">4</span>활동지 4종 (쓰기 · 인쇄)</h2>
+      <p class="lead">화면의 <b>📄 활동지</b> 버튼(선생님 대시보드와 학생 화면 모두)에서 열립니다. AI 없이 쓰고 인쇄하는 종이 활동지입니다.</p>
+      <div class="outs">
+        <div class="out"><b>🎤 음악 인터뷰</b>감상 <u>전</u> — 곡과 나에 대한 질문</div>
+        <div class="out"><b>🎨 미디어레터</b>감상 <u>중</u> — 번역코드표·스케치</div>
+        <div class="out"><b>💌 음악 편지</b>감상 <u>후</u> — 작곡가·연주자·나에게</div>
+        <div class="out"><b>📰 음악 신문</b>마무리 — 기사로 정리</div>
+      </div>
+      <div class="tip"><span class="t">인쇄</span>각 활동지에 <b>🖨️ 인쇄 / PDF 저장</b> 버튼이 있습니다. 화면 안의 📰 음악 신문·💌 편지·🎤 인터뷰 만들기는 AI가 초안을 도와주는 버전이고, 활동지는 손으로 쓰는 버전입니다.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">5</span>슬라이드쇼 — 선생님이 알아 두실 것</h2>
+      <ul>
+        <li>학생이 모은 장면(생성 이미지)이 곡 하나 = 장면 하나로 들어갑니다. 학생은 그 위에 <b>자기 캐릭터·말풍선·자막</b>을 올립니다.</li>
+        <li><b>🎵 배경 음악</b>: 곡을 여러 개 한 번에 올릴 수 있고, <b>⏱</b>에서 곡마다 담당 장면 수를 정합니다(그림 4장 + 2곡 → 2·2, 1·3 등). 곡 길이에 맞춰 장면이 자동으로 넘어갑니다.</li>
+        <li><b>⏺ 녹화</b>: 이 탭만 골라 녹화하면 버튼 없는 깨끗한 영상(.webm)이 됩니다. 마지막 곡이 끝나고 끝 카드가 나오면 저절로 멈춥니다.</li>
+        <li>끝 화면은 커튼콜 없이 <b>THE END 끝 카드</b>입니다. 학생이 꾸민 것은 저절로 저장되고, <b>👁 보기</b>에서 선생님이 그대로 볼 수 있습니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="no">6</span>기록 · 세특 · 시트</h2>
+      <ul>
+        <li><b>📊 구글시트 연동(선택)</b>: 설정에 Apps Script 주소를 넣으면 학생 활동이 시트에 쌓입니다. 이름 칸에는 <b>학생 번호</b>가 들어가서 학생별로 묶입니다.</li>
+        <li><b>📋 세특</b>: 학생현황에서 학생을 고르면 활동 내용을 바탕으로 세특 문구를 만들어 줍니다. 그대로 쓰지 말고 다듬어 주세요.</li>
+        <li><b>📰 신문 완성본으로 보기 · 인쇄</b>: 반의 기사와 장면을 한 장 신문으로 모아 인쇄합니다.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ══════════════ 학생용 ══════════════ -->
+  <div class="page" id="page-s">
+    <div class="flow">
+      <span class="step">📱 들어가기</span><span class="arr">→</span>
+      <span class="step">🎧 듣기</span><span class="arr">→</span>
+      <span class="step">🗺️ 번역하기</span><span class="arr">→</span>
+      <span class="step">🎨 그림 만들기</span><span class="arr">→</span>
+      <span class="step">🎬📰💌 만들기</span>
+    </div>
+
+    <section>
+      <h2><span class="no">1</span>들어가기</h2>
+      <ol>
+        <li>선생님이 준 <b>QR</b>을 찍거나 <b>링크</b>를 엽니다.</li>
+        <li><b>이름과 번호</b>를 고르고 들어갑니다. 로그인은 없어요.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2><span class="no">2</span>음악 듣기 (1~2번 칸)</h2>
+      <ul>
+        <li><b>▶ 유튜브</b> 주소를 붙여 넣거나, <b>🔍 유튜브에서 찾기</b>로 검색해서 주소를 가져와요. 음악 파일이 있으면 <b>📂 파일 업로드</b>.</li>
+        <li><b>✂️ 구간 나누기</b>에서 몇 부분으로 나눠 들을지 고르고, <b>✨ AI 설명 생성</b>을 누르면 이 곡이 어떤 곡인지 설명이 나와요. 설명을 읽고 다시 들어 보세요.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="no">3</span>음악을 그림으로 번역하기 (3~7번 칸)</h2>
+      <ul>
+        <li><b>🗺️ 번역코드표</b>: 빠르기·높낮이·악기 소리 같은 음악 요소가 "무엇이 들리나 / 어떤 장면인가"로 적혀 있어요. 들으면서 나에게 맞는 걸 찾아보세요.</li>
+        <li><b>🎨 그림 스타일</b>, <b>🌈 색감</b>(여러 개 가능), <b>💭 분위기</b>(여러 개 가능)를 고릅니다.</li>
+        <li><b>✏️ 자유롭게 표현하기</b>: 음악을 듣고 떠오르는 장면을 <b>한글로</b> 씁니다. 자세할수록 그림이 좋아져요.
+          <br><span style="color:var(--sub)">예) 비 오는 저녁, 혼자 창가에 앉아 창밖을 보는 아이. 가로등 불빛이 번져 보인다.</span></li>
+        <li><b>🎬 장면 정보</b>에 제목과 등장인물을 간단히 적습니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="no">4</span>그림 만들고 모으기</h2>
+      <ol>
+        <li><b>✨ 이미지 생성하기</b>를 누릅니다. 마음에 안 들면 <b>🔄 다시 생성</b>.</li>
+        <li>마음에 들면 <b>➕ 이 장면 모으기</b>. 아래에 장면이 쌓여요.</li>
+        <li>곡을 두 개 감상했으면 곡마다 장면을 따로 모으세요. 나중에 슬라이드쇼에서 곡 순서대로 나옵니다.</li>
+      </ol>
+      <div class="tip"><span class="t">10번 스케치</span>활동지의 "캐릭터·장면 스케치" 칸을 화면에서 직접 그려도 돼요. 이 그림을 슬라이드쇼의 캐릭터로 쓸 수 있어요.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">5</span>슬라이드쇼 — 감상 영상 만들기</h2>
+      <p class="lead"><b>🎬 슬라이드쇼로 이동</b>을 누르면 모은 장면이 무대가 돼요. 곡 하나가 장면 하나예요.</p>
+      <div class="btns">
+        <div class="btnx"><b>🎵 배경 음악</b>위쪽 칸에서 음악 파일을 올려요. 여러 곡을 한 번에 골라도 돼요.</div>
+        <div class="btnx"><b>⏱ 자동 진행</b>곡마다 몇 장면을 맡을지 정하면 곡 길이에 맞춰 저절로 넘어가요.</div>
+        <div class="btnx"><b>🎭 캐릭터</b>내 사진이나 그림을 올려요(3개까지). 끌어서 옮기고 🎬로 움직임을 줘요.</div>
+        <div class="btnx"><b>💬 말풍선 · 📝 자막</b>내 생각을 말풍선이나 자막으로 써요. 끌어서 옮겨요.</div>
+        <div class="btnx"><b>🎆 효과</b>눈·별·꽃잎 같은 배경 효과.</div>
+        <div class="btnx"><b>⏺ 녹화</b>▶ 미리보기로 한 번 본 뒤 녹화. 끝 카드까지 저절로 멈춰요.</div>
+      </div>
+      <div class="tip"><span class="t">저장</span>꾸민 것은 저절로 저장돼요. 나갈 때는 <b>✕ 저장하고 나가기</b>. 끝 화면의 <b>⏮ 처음 장면으로</b>는 처음으로만 가고 나가지 않아요.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">6</span>단축키</h2>
+      <div class="keys">
+        <div class="key"><kbd>→</kbd><kbd>Space</kbd> 다음 장면</div>
+        <div class="key"><kbd>←</kbd> 이전 장면</div>
+        <div class="key"><kbd>F</kbd> 전체화면</div>
+        <div class="key"><kbd>Esc</kbd> 열린 창 닫기</div>
+        <div class="key"><kbd>Enter</kbd> 말풍선 빠르게 추가</div>
+      </div>
+      <div class="tip"><span class="t">글 쓰는 중에는</span>단축키가 쉬어요. 말풍선에 글을 쓸 때 Space는 그냥 띄어쓰기예요.</div>
+    </section>
+
+    <section>
+      <h2><span class="no">7</span>신문 · 편지 · 인터뷰</h2>
+      <ul>
+        <li><b>📰 음악 신문 만들기</b>: 모은 장면으로 기사를 써요. AI가 초안을 도와주고, 내가 고쳐요.</li>
+        <li><b>💌 음악 편지 쓰기</b>: 작곡가나 연주자, 미래의 나에게 편지를 써요.</li>
+        <li><b>🎤 음악 인터뷰</b>: 곡에 대한 질문에 답해요. <b>✨ AI 질문 생성</b>으로 질문을 받을 수 있어요.</li>
+        <li><b>📄 활동지</b>: 손으로 쓰는 종이 활동지 4장(인터뷰 → 미디어레터 → 편지 → 신문). 인쇄해서 써요.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="foot">EAIM · Emotion · Artscape · Interactive · Musicalization &nbsp;·&nbsp; 미디어레터 사용 가이드 v1 (2026-09-25)</div>
+</div>
+<script>
+function showTab(k){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',(k==='t')===(i===0)));
+  document.getElementById('page-t').classList.toggle('on',k==='t');
+  document.getElementById('page-s').classList.toggle('on',k==='s');
+  try{ history.replaceState(null,'','#'+(k==='t'?'teacher':'student')); }catch(e){}
+  window.scrollTo({top:0});
+}
+if(location.hash==='#student') showTab('s');
+</script>
+</body>
+</html>
